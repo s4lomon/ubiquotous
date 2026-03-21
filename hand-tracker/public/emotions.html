@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Muse EEG - Real-Time Color Map</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 p-8">
+    <div class="max-w-7xl mx-auto">
+        
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <div class="flex items-center justify-center gap-3 mb-4">
+                <svg class="w-12 h-12 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                </svg>
+                <h1 class="text-4xl font-bold text-white">Muse EEG - Real-Time Color Map</h1>
+                <div id="connectionIndicator" class="w-4 h-4 rounded-full bg-red-500 animate-pulse"></div>
+            </div>
+            <p class="text-purple-200">Live Brain Wave Visualization from Your Muse Headband</p>
+            <p id="statusText" class="text-sm text-gray-400 mt-2">Ready to connect</p>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex justify-center gap-4 mb-8">
+            <button id="connectBtn" onclick="connectMuse()" 
+                class="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold rounded-full shadow-lg transition-all transform hover:scale-105">
+                🔗 Connect Muse
+            </button>
+            <button id="disconnectBtn" onclick="disconnectMuse()" disabled
+                class="px-8 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold rounded-full shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+                ❌ Disconnect
+            </button>
+            <button id="fakeDataBtn" onclick="toggleFakeData()" 
+                class="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold rounded-full shadow-lg transition-all transform hover:scale-105">
+                🎭 Fake Data Mode
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- Left Column -->
+            <div class="space-y-6">
+                
+                <!-- Sphere -->
+                <div class="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
+                    <h2 class="text-xl font-semibold text-white mb-4">Brain State Sphere</h2>
+                    <canvas id="sphereCanvas" width="400" height="400" class="w-full rounded-lg"></canvas>
+                    
+                    <!-- Color Info -->
+                    <div class="mt-4 p-4 bg-black/30 rounded-lg">
+                        <div class="text-sm text-gray-300 mb-2">Current State Color</div>
+                        <div class="flex items-center gap-4">
+                            <div id="colorBox" class="w-16 h-16 rounded-lg border-2 border-white/30"></div>
+                            <div class="font-mono text-white">
+                                <div>R: <span id="colorR">0</span></div>
+                                <div>G: <span id="colorG">0</span></div>
+                                <div>B: <span id="colorB">0</span></div>
+                            </div>
+                            <div class="text-xs text-gray-400 ml-auto">
+                                <div>Freq: <span id="freqPos">0.0</span>%</div>
+                                <div>Volt: <span id="voltPos">0.0</span>%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2D Color Map -->
+                <div class="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
+                    <h2 class="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                        </svg>
+                        2D Color Map Navigator
+                    </h2>
+                    <canvas id="mapCanvas" width="400" height="300" class="w-full rounded-lg border-2 border-white/20"></canvas>
+                    <div class="mt-2 flex justify-between text-xs text-gray-400">
+                        <span>Delta (Low Freq)</span>
+                        <span>Gamma (High Freq)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="space-y-6">
+                
+                <!-- Total Voltage -->
+                <div class="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
+                    <h2 class="text-xl font-semibold text-white mb-4">Total Voltage (Y-axis)</h2>
+                    <div class="flex items-center gap-4">
+                        <div id="voltageBox" class="w-24 h-24 rounded-lg border-2 border-white/30 flex items-center justify-center">
+                            <span id="voltageValue" class="text-2xl font-bold text-white">0.00</span>
+                        </div>
+                        <div class="flex-1">
+                            <div class="h-8 bg-gradient-to-r from-black via-gray-500 to-white rounded-lg relative overflow-hidden">
+                                <div id="voltageProgress" class="absolute h-full bg-blue-500/30 transition-all duration-200" style="width: 0%"></div>
+                            </div>
+                            <div class="flex justify-between text-xs text-gray-400 mt-1">
+                                <span>0.0 µV (Black)</span>
+                                <span>5.0 µV (White)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Brainwave Bands -->
+                <div class="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
+                    <h2 class="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="2" fill="none"></polyline>
+                        </svg>
+                        Live Brainwave Streams (Real EEG)
+                    </h2>
+                    <div id="waveStreams" class="space-y-3"></div>
+                </div>
+
+                <!-- Data Stats -->
+                <div class="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
+                    <h2 class="text-xl font-semibold text-white mb-4">📡 Sensor Status</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="sensor-item">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div id="tp9-status" class="w-3 h-3 rounded-full bg-gray-500"></div>
+                                <span class="text-white font-semibold">TP9</span>
+                                <span class="text-xs text-gray-400">Left Ear</span>
+                            </div>
+                            <div class="text-xs text-gray-400">Packets: <span id="tp9-count" class="text-white">0</span></div>
+                        </div>
+                        <div class="sensor-item">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div id="af7-status" class="w-3 h-3 rounded-full bg-gray-500"></div>
+                                <span class="text-white font-semibold">AF7</span>
+                                <span class="text-xs text-gray-400">Left Front</span>
+                            </div>
+                            <div class="text-xs text-gray-400">Packets: <span id="af7-count" class="text-white">0</span></div>
+                        </div>
+                        <div class="sensor-item">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div id="af8-status" class="w-3 h-3 rounded-full bg-gray-500"></div>
+                                <span class="text-white font-semibold">AF8</span>
+                                <span class="text-xs text-gray-400">Right Front</span>
+                            </div>
+                            <div class="text-xs text-gray-400">Packets: <span id="af8-count" class="text-white">0</span></div>
+                        </div>
+                        <div class="sensor-item">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div id="tp10-status" class="w-3 h-3 rounded-full bg-gray-500"></div>
+                                <span class="text-white font-semibold">TP10</span>
+                                <span class="text-xs text-gray-400">Right Ear</span>
+                            </div>
+                            <div class="text-xs text-gray-400">Packets: <span id="tp10-count" class="text-white">0</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Connection Info -->
+                <div class="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
+                    <h2 class="text-xl font-semibold text-white mb-4">Connection Info</h2>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Device:</span>
+                            <span class="text-white" id="deviceName">Not connected</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Total packets:</span>
+                            <span class="text-white" id="packetCount">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Active channels:</span>
+                            <span class="text-white" id="channelCount">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Panel -->
+        <div class="mt-6 bg-blue-900/20 backdrop-blur-lg rounded-xl p-6 border border-blue-400/20">
+            <div class="flex items-start gap-3">
+                <svg class="w-6 h-6 text-blue-300 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="none" stroke="currentColor" stroke-width="2"></polygon>
+                </svg>
+                <div>
+                    <h3 class="text-lg font-semibold text-blue-200 mb-2">Real-Time EEG Processing</h3>
+                    <ul class="text-blue-100 space-y-1 text-sm">
+                        <li><strong>Live Data:</strong> Streaming directly from your Muse headband via Web Bluetooth</li>
+                        <li><strong>FFT Processing:</strong> Real-time frequency analysis of your brain waves</li>
+                        <li><strong>X-axis:</strong> Dominant frequency (Delta→Gamma) based on actual EEG power</li>
+                        <li><strong>Y-axis:</strong> Total brain activity (voltage magnitude)</li>
+                        <li><strong>Color Sphere:</strong> Visual representation of your current mental state</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Muse Configuration
+        const MUSE_SERVICE = '0000fe8d-0000-1000-8000-00805f9b34fb';
+        const CONTROL_CHAR = '273e0001-4c4d-454d-96be-f03bac821358';
+        const EEG_CHARS = {
+            TP9: '273e0003-4c4d-454d-96be-f03bac821358',
+            AF7: '273e0004-4c4d-454d-96be-f03bac821358',
+            AF8: '273e0005-4c4d-454d-96be-f03bac821358',
+            TP10: '273e0006-4c4d-454d-96be-f03bac821358'
+        };
+
+        // State
+        let device = null;
+        let server = null;
+        let connected = false;
+        let fakeMode = false;
+        let fakeInterval = null;
+        let packetCount = 0;
+        let channelCount = 0;
+        
+        const eegBuffers = { TP9: [], AF7: [], AF8: [], TP10: [] };
+        const sensorPackets = { TP9: 0, AF7: 0, AF8: 0, TP10: 0 };
+        const sensorLastUpdate = { TP9: 0, AF7: 0, AF8: 0, TP10: 0 };
+        const FFT_SIZE = 256;
+        const SAMPLE_RATE = 256;
+        
+        let brainwaves = { delta: 0, theta: 0, alpha: 0, beta: 0, gamma: 0 };
+        let totalVoltage = 0;
+        let rotation = 0;
+        
+        // Waveform buffers for streaming visualization
+        const waveformBuffers = {
+            delta: [],
+            theta: [],
+            alpha: [],
+            beta: [],
+            gamma: []
+        };
+        const WAVEFORM_LENGTH = 200; // Points to display
+
+        // Colors
+        const waveColors = {
+            delta: { r: 107, g: 44, b: 145 },
+            theta: { r: 46, g: 92, b: 184 },
+            alpha: { r: 45, g: 155, b: 78 },
+            beta: { r: 230, g: 126, b: 34 },
+            gamma: { r: 192, g: 57, b: 43 }
+        };
+
+        // Toggle fake data mode
+        function toggleFakeData() {
+            fakeMode = !fakeMode;
+            const btn = document.getElementById('fakeDataBtn');
+            
+            if (fakeMode) {
+                // Start fake data
+                btn.textContent = '⏹️ Stop Fake Data';
+                btn.className = 'px-8 py-3 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold rounded-full shadow-lg transition-all transform hover:scale-105';
+                
+                document.getElementById('connectionIndicator').className = 'w-4 h-4 rounded-full bg-yellow-500 animate-pulse';
+                document.getElementById('deviceName').textContent = 'Fake Data Generator';
+                document.getElementById('channelCount').textContent = '4';
+                updateStatus('🎭 Generating fake EEG data...');
+                
+                // Disable real connection while in fake mode
+                document.getElementById('connectBtn').disabled = true;
+                
+                startFakeData();
+            } else {
+                // Stop fake data
+                btn.textContent = '🎭 Fake Data Mode';
+                btn.className = 'px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold rounded-full shadow-lg transition-all transform hover:scale-105';
+                
+                document.getElementById('connectionIndicator').className = 'w-4 h-4 rounded-full bg-red-500 animate-pulse';
+                document.getElementById('deviceName').textContent = 'Not connected';
+                document.getElementById('channelCount').textContent = '0';
+                updateStatus('Ready to connect');
+                
+                document.getElementById('connectBtn').disabled = false;
+                
+                stopFakeData();
+            }
+        }
+
+        // Generate fake EEG data
+        function startFakeData() {
+            // Fake sensor updates
+            ['TP9', 'AF7', 'AF8', 'TP10'].forEach(channel => {
+                sensorLastUpdate[channel] = Date.now();
+            });
+            
+            fakeInterval = setInterval(() => {
+                const time = Date.now() / 1000;
+                
+                // Generate realistic fake brainwaves
+                brainwaves = {
+                    delta: Math.max(0, Math.min(1, 0.3 + Math.sin(time * 0.5) * 0.2)),
+                    theta: Math.max(0, Math.min(1, 0.4 + Math.sin(time * 0.8) * 0.25)),
+                    alpha: Math.max(0, Math.min(1, 0.5 + Math.sin(time * 1.2) * 0.3)),
+                    beta: Math.max(0, Math.min(1, 0.35 + Math.sin(time * 1.8) * 0.25)),
+                    gamma: Math.max(0, Math.min(1, 0.2 + Math.sin(time * 2.5) * 0.15))
+                };
+                
+                // Add to waveform buffers
+                Object.keys(brainwaves).forEach(band => {
+                    waveformBuffers[band].push(brainwaves[band]);
+                    if (waveformBuffers[band].length > WAVEFORM_LENGTH) {
+                        waveformBuffers[band].shift();
+                    }
+                });
+                
+                // Calculate total voltage
+                totalVoltage = Object.values(brainwaves).reduce((a, b) => a + b, 0);
+                
+                // Increment packet count
+                packetCount++;
+                document.getElementById('packetCount').textContent = packetCount;
+                
+                // Update fake sensor packets
+                ['TP9', 'AF7', 'AF8', 'TP10'].forEach(channel => {
+                    sensorPackets[channel]++;
+                    sensorLastUpdate[channel] = Date.now();
+                    document.getElementById(`${channel.toLowerCase()}-count`).textContent = sensorPackets[channel];
+                });
+                
+                updateUI();
+            }, 50); // 20 Hz update rate
+        }
+
+        function stopFakeData() {
+            if (fakeInterval) {
+                clearInterval(fakeInterval);
+                fakeInterval = null;
+            }
+            packetCount = 0;
+            document.getElementById('packetCount').textContent = '0';
+            
+            // Reset brainwaves
+            brainwaves = { delta: 0, theta: 0, alpha: 0, beta: 0, gamma: 0 };
+            totalVoltage = 0;
+            updateUI();
+        }
+
+        // Connect to Muse
+        async function connectMuse() {
+            // Can't connect in fake mode
+            if (fakeMode) {
+                updateStatus('⚠️ Stop fake data mode first!');
+                return;
+            }
+            
+            try {
+                updateStatus('🔍 Searching for Muse...');
+                
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [{ services: [MUSE_SERVICE] }],
+                    optionalServices: [MUSE_SERVICE]
+                });
+
+                document.getElementById('deviceName').textContent = device.name || 'Muse Device';
+                device.addEventListener('gattserverdisconnected', onDisconnected);
+
+                updateStatus('📡 Connecting...');
+                server = await device.gatt.connect();
+
+                updateStatus('🔧 Getting service...');
+                const service = await server.getPrimaryService(MUSE_SERVICE);
+
+                // Start streaming
+                updateStatus('▶️ Starting EEG stream...');
+                try {
+                    const control = await service.getCharacteristic(CONTROL_CHAR);
+                    await control.writeValue(new Uint8Array([0x02, 0x64, 0x0a]));
+                    await new Promise(r => setTimeout(r, 100));
+                    await control.writeValue(new Uint8Array([0x02, 0x73, 0x0a]));
+                } catch (e) {
+                    console.log('Control commands:', e);
+                }
+
+                // Subscribe to channels
+                channelCount = 0;
+                for (const [name, uuid] of Object.entries(EEG_CHARS)) {
+                    try {
+                        const char = await service.getCharacteristic(uuid);
+                        await char.startNotifications();
+                        char.addEventListener('characteristicvaluechanged', (e) => handleEEG(e, name));
+                        channelCount++;
+                    } catch (e) {
+                        console.log(`${name} failed:`, e);
+                    }
+                }
+
+                document.getElementById('channelCount').textContent = channelCount;
+                
+                if (channelCount > 0) {
+                    connected = true;
+                    updateStatus('✅ Streaming live EEG data!');
+                    document.getElementById('connectionIndicator').className = 'w-4 h-4 rounded-full bg-green-500 animate-pulse';
+                    document.getElementById('connectBtn').disabled = true;
+                    document.getElementById('disconnectBtn').disabled = false;
+                } else {
+                    throw new Error('No channels available');
+                }
+
+            } catch (error) {
+                updateStatus('❌ ' + error.message);
+                console.error(error);
+            }
+        }
+
+        // Handle EEG data
+        function handleEEG(event, channel) {
+            const value = event.target.value;
+            packetCount++;
+            sensorPackets[channel]++;
+            sensorLastUpdate[channel] = Date.now();
+            
+            document.getElementById('packetCount').textContent = packetCount;
+            document.getElementById(`${channel.toLowerCase()}-count`).textContent = sensorPackets[channel];
+            document.getElementById(`${channel.toLowerCase()}-status`).className = 'w-3 h-3 rounded-full bg-green-500 animate-pulse';
+
+            // Parse samples
+            const samples = [];
+            for (let i = 0; i < value.byteLength - 1; i += 3) {
+                if (i + 2 < value.byteLength) {
+                    const s1 = (value.getUint8(i) << 4) | (value.getUint8(i + 1) >> 4);
+                    const s2 = ((value.getUint8(i + 1) & 0x0F) << 8) | value.getUint8(i + 2);
+                    samples.push(s1, s2);
+                }
+            }
+
+            // Convert to microvolts and buffer
+            samples.forEach(sample => {
+                const voltage = (sample - 2048) * 0.48828125;
+                eegBuffers[channel].push(voltage);
+            });
+
+            // Keep buffer manageable
+            if (eegBuffers[channel].length > FFT_SIZE * 2) {
+                eegBuffers[channel] = eegBuffers[channel].slice(-FFT_SIZE);
+            }
+
+            // Process when we have enough data (use AF7 as trigger)
+            if (channel === 'AF7' && eegBuffers[channel].length >= FFT_SIZE) {
+                processBrainwaves();
+            }
+        }
+
+        // Monitor sensor health
+        setInterval(() => {
+            const now = Date.now();
+            ['TP9', 'AF7', 'AF8', 'TP10'].forEach(channel => {
+                const timeSince = now - sensorLastUpdate[channel];
+                const statusEl = document.getElementById(`${channel.toLowerCase()}-status`);
+                
+                if (timeSince > 2000) {
+                    // No data for 2 seconds - red
+                    statusEl.className = 'w-3 h-3 rounded-full bg-red-500';
+                } else if (timeSince > 500) {
+                    // Slow data - yellow
+                    statusEl.className = 'w-3 h-3 rounded-full bg-yellow-500';
+                } else if (connected || fakeMode) {
+                    // Good connection - green
+                    statusEl.className = 'w-3 h-3 rounded-full bg-green-500 animate-pulse';
+                }
+            });
+        }, 500);
+
+        // Process brainwaves with FFT and FILTERING
+        function processBrainwaves() {
+            // Average all available channels
+            const channels = Object.values(eegBuffers).filter(b => b.length >= FFT_SIZE);
+            if (channels.length === 0) return;
+
+            const avgBuffer = new Array(FFT_SIZE).fill(0);
+            channels.forEach(buffer => {
+                for (let i = 0; i < FFT_SIZE; i++) {
+                    avgBuffer[i] += buffer[buffer.length - FFT_SIZE + i];
+                }
+            });
+            avgBuffer.forEach((val, i) => avgBuffer[i] /= channels.length);
+
+            // ========== APPLY FILTERS ==========
+            
+            // 1. Remove DC offset (mean removal)
+            const mean = avgBuffer.reduce((a, b) => a + b, 0) / avgBuffer.length;
+            const demeaned = avgBuffer.map(v => v - mean);
+            
+            // 2. Bandpass filter: 0.5-100 Hz (removes very low drift and very high noise)
+            const filtered = butterworthBandpass(demeaned, 0.5, 100, SAMPLE_RATE);
+            
+            // 3. Notch filter: Remove 60Hz electrical noise (50Hz in Europe)
+            const notched = notchFilter(filtered, 60, SAMPLE_RATE);
+
+            // Perform FFT on FILTERED data
+            const fft = performFFT(notched);
+            
+            // Calculate band powers
+            const delta = getBandPower(fft, 0.5, 4);
+            const theta = getBandPower(fft, 4, 8);
+            const alpha = getBandPower(fft, 8, 13);
+            const beta = getBandPower(fft, 13, 30);
+            const gamma = getBandPower(fft, 30, 100);
+
+            const total = delta + theta + alpha + beta + gamma;
+            if (total > 0) {
+                brainwaves = {
+                    delta: delta / total,
+                    theta: theta / total,
+                    alpha: alpha / total,
+                    beta: beta / total,
+                    gamma: gamma / total
+                };
+                
+                // Add to waveform buffers for streaming
+                Object.keys(brainwaves).forEach(band => {
+                    waveformBuffers[band].push(brainwaves[band]);
+                    if (waveformBuffers[band].length > WAVEFORM_LENGTH) {
+                        waveformBuffers[band].shift();
+                    }
+                });
+            }
+
+            // Calculate total voltage from RMS of FILTERED signal
+            const rms = Math.sqrt(notched.reduce((sum, v) => sum + v * v, 0) / notched.length);
+            totalVoltage = Math.min(5, rms / 50);
+
+            updateUI();
+        }
+
+        // Simple Butterworth bandpass filter (2nd order)
+        function butterworthBandpass(data, lowFreq, highFreq, sampleRate) {
+            // Simplified implementation - highpass then lowpass
+            let filtered = data.slice();
+            
+            // Highpass to remove low frequency drift
+            const alpha_hp = 1 / (1 + (sampleRate / (2 * Math.PI * lowFreq)));
+            let prev_hp = 0;
+            for (let i = 1; i < filtered.length; i++) {
+                filtered[i] = alpha_hp * (prev_hp + filtered[i] - filtered[i - 1]);
+                prev_hp = filtered[i];
+            }
+            
+            // Lowpass to remove high frequency noise
+            const alpha_lp = (2 * Math.PI * highFreq) / (sampleRate + 2 * Math.PI * highFreq);
+            let prev_lp = filtered[0];
+            for (let i = 1; i < filtered.length; i++) {
+                filtered[i] = prev_lp + alpha_lp * (filtered[i] - prev_lp);
+                prev_lp = filtered[i];
+            }
+            
+            return filtered;
+        }
+
+        // Notch filter to remove 60Hz electrical noise
+        function notchFilter(data, notchFreq, sampleRate) {
+            const filtered = data.slice();
+            const Q = 30; // Quality factor (narrowness of notch)
+            const w0 = 2 * Math.PI * notchFreq / sampleRate;
+            const bw = w0 / Q;
+            
+            const b = [1, -2 * Math.cos(w0), 1];
+            const a = [1, -2 * Math.cos(w0) * Math.exp(-bw/2), Math.exp(-bw)];
+            
+            // Apply IIR filter
+            for (let i = 2; i < filtered.length; i++) {
+                filtered[i] = (b[0] * data[i] + b[1] * data[i-1] + b[2] * data[i-2] 
+                             - a[1] * filtered[i-1] - a[2] * filtered[i-2]) / a[0];
+            }
+            
+            return filtered;
+        }
+
+        // Simple FFT
+        function performFFT(buffer) {
+            const N = buffer.length;
+            const result = new Array(N / 2).fill(0);
+            
+            for (let k = 0; k < N / 2; k++) {
+                let real = 0, imag = 0;
+                for (let n = 0; n < N; n++) {
+                    const angle = -2 * Math.PI * k * n / N;
+                    real += buffer[n] * Math.cos(angle);
+                    imag += buffer[n] * Math.sin(angle);
+                }
+                result[k] = Math.sqrt(real * real + imag * imag) / N;
+            }
+            return result;
+        }
+
+        // Get band power
+        function getBandPower(fft, minFreq, maxFreq) {
+            const binSize = SAMPLE_RATE / FFT_SIZE;
+            const minBin = Math.floor(minFreq / binSize);
+            const maxBin = Math.ceil(maxFreq / binSize);
+            
+            let power = 0;
+            for (let i = minBin; i <= maxBin && i < fft.length; i++) {
+                power += fft[i] * fft[i];
+            }
+            return power || 0.0001;
+        }
+
+        // Calculate color from brainwaves
+        function calculateColor(waves, voltage) {
+            const names = ['delta', 'theta', 'alpha', 'beta', 'gamma'];
+            const powers = names.map(w => waves[w]);
+            const totalPower = powers.reduce((a, b) => a + b, 0);
+            
+            let xPos = 0;
+            if (totalPower > 0) {
+                powers.forEach((p, i) => xPos += (i / 4) * (p / totalPower));
+            }
+            
+            const yPos = Math.min(1, voltage / 5);
+            
+            let r = 0, g = 0, b = 0;
+            powers.forEach((p, i) => {
+                const color = waveColors[names[i]];
+                const weight = totalPower > 0 ? p / totalPower : 0;
+                r += color.r * weight;
+                g += color.g * weight;
+                b += color.b * weight;
+            });
+            
+            let finalR, finalG, finalB;
+            if (yPos < 0.5) {
+                const brightness = yPos * 2;
+                finalR = r * brightness;
+                finalG = g * brightness;
+                finalB = b * brightness;
+            } else {
+                const whiteness = (yPos - 0.5) * 2;
+                finalR = r + (255 - r) * whiteness;
+                finalG = g + (255 - g) * whiteness;
+                finalB = b + (255 - b) * whiteness;
+            }
+            
+            return {
+                position: { x: xPos, y: yPos },
+                color: { r: Math.round(finalR), g: Math.round(finalG), b: Math.round(finalB) }
+            };
+        }
+
+        // Update UI
+        function updateUI() {
+            const result = calculateColor(brainwaves, totalVoltage);
+            
+            // Update color display
+            document.getElementById('colorBox').style.backgroundColor = 
+                `rgb(${result.color.r}, ${result.color.g}, ${result.color.b})`;
+            document.getElementById('colorR').textContent = result.color.r;
+            document.getElementById('colorG').textContent = result.color.g;
+            document.getElementById('colorB').textContent = result.color.b;
+            document.getElementById('freqPos').textContent = (result.position.x * 100).toFixed(1);
+            document.getElementById('voltPos').textContent = (result.position.y * 100).toFixed(1);
+            
+            // Update voltage
+            const intensity = Math.round((totalVoltage / 5) * 255);
+            document.getElementById('voltageBox').style.backgroundColor = `rgb(${intensity}, ${intensity}, ${intensity})`;
+            document.getElementById('voltageValue').textContent = totalVoltage.toFixed(2);
+            document.getElementById('voltageValue').style.color = intensity > 128 ? '#000' : '#fff';
+            document.getElementById('voltageProgress').style.width = `${(totalVoltage / 5) * 100}%`;
+            
+            // Update wave bands
+            updateWaveBands();
+            drawColorMap(result);
+        }
+
+        // Update wave bands display with STREAMING WAVEFORMS
+        function updateWaveBands() {
+            const container = document.getElementById('waveStreams');
+            container.innerHTML = '';
+            
+            Object.entries(brainwaves).forEach(([wave, power]) => {
+                const color = waveColors[wave];
+                const frequency = wave === 'delta' ? '0.5-4 Hz' :
+                                wave === 'theta' ? '4-8 Hz' :
+                                wave === 'alpha' ? '8-13 Hz' :
+                                wave === 'beta' ? '13-30 Hz' : '30-100 Hz';
+                
+                const div = document.createElement('div');
+                div.className = 'space-y-1';
+                div.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full" style="background: rgb(${color.r}, ${color.g}, ${color.b})"></div>
+                            <span class="text-white font-semibold capitalize text-sm">${wave}</span>
+                            <span class="text-xs text-gray-400">${frequency}</span>
+                        </div>
+                        <span class="text-white font-mono text-sm">${(power * 100).toFixed(1)}%</span>
+                    </div>
+                    <canvas id="wave-${wave}" width="400" height="40" class="w-full rounded" style="background: rgba(0,0,0,0.3)"></canvas>
+                `;
+                container.appendChild(div);
+                
+                // Draw waveform
+                drawWaveform(wave, color);
+            });
+        }
+
+        // Draw streaming waveform
+        function drawWaveform(band, color) {
+            const canvas = document.getElementById(`wave-${band}`);
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            const data = waveformBuffers[band];
+            
+            // Clear
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillRect(0, 0, w, h);
+            
+            if (data.length < 2) return;
+            
+            // Draw grid
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 5; i++) {
+                const y = (i / 4) * h;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+            }
+            
+            // Draw waveform
+            ctx.strokeStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            for (let i = 0; i < data.length; i++) {
+                const x = (i / WAVEFORM_LENGTH) * w;
+                const y = h - (data[i] * h); // Invert Y axis
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            
+            ctx.stroke();
+            
+            // Draw filled area under curve
+            ctx.lineTo(w, h);
+            ctx.lineTo(0, h);
+            ctx.closePath();
+            ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, 0.1)`;
+            ctx.fill();
+            
+            // Draw current value indicator
+            if (data.length > 0) {
+                const lastVal = data[data.length - 1];
+                const lastY = h - (lastVal * h);
+                
+                ctx.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+                ctx.beginPath();
+                ctx.arc(w - 5, lastY, 4, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Glow effect
+                ctx.shadowColor = `rgb(${color.r}, ${color.g}, ${color.b})`;
+                ctx.shadowBlur = 10;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        // Draw 2D color map
+        function drawColorMap(result) {
+            const canvas = document.getElementById('mapCanvas');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            
+            // Draw gradient
+            for (let x = 0; x < w; x++) {
+                for (let y = 0; y < h; y++) {
+                    const xPos = x / w;
+                    const yPos = 1 - y / h;
+                    
+                    const waves = ['delta', 'theta', 'alpha', 'beta', 'gamma'];
+                    let baseR = 0, baseG = 0, baseB = 0;
+                    
+                    for (let i = 0; i < waves.length; i++) {
+                        const start = i / 4;
+                        const end = (i + 1) / 4;
+                        
+                        if (i === 4 || (xPos >= start && xPos < end)) {
+                            if (i === 4) {
+                                const c = waveColors.gamma;
+                                baseR = c.r; baseG = c.g; baseB = c.b;
+                            } else {
+                                const t = (xPos - start) / (end - start);
+                                const c1 = waveColors[waves[i]];
+                                const c2 = waveColors[waves[i + 1]];
+                                baseR = c1.r + (c2.r - c1.r) * t;
+                                baseG = c1.g + (c2.g - c1.g) * t;
+                                baseB = c1.b + (c2.b - c1.b) * t;
+                            }
+                            break;
+                        }
+                    }
+                    
+                    let finalR, finalG, finalB;
+                    if (yPos < 0.5) {
+                        const b = yPos * 2;
+                        finalR = baseR * b; finalG = baseG * b; finalB = baseB * b;
+                    } else {
+                        const w = (yPos - 0.5) * 2;
+                        finalR = baseR + (255 - baseR) * w;
+                        finalG = baseG + (255 - baseG) * w;
+                        finalB = baseB + (255 - baseB) * w;
+                    }
+                    
+                    ctx.fillStyle = `rgb(${finalR}, ${finalG}, ${finalB})`;
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+            
+            // Draw cursor
+            const cx = result.position.x * w;
+            const cy = (1 - result.position.y) * h;
+            
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // Draw sphere (MUCH MORE VIVID AND FLUID!)
+        function drawSphere() {
+            const canvas = document.getElementById('sphereCanvas');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            const cx = w / 2;
+            const cy = h / 2;
+            const radius = 140;
+            
+            ctx.fillStyle = '#0a0a14';
+            ctx.fillRect(0, 0, w, h);
+            
+            const result = calculateColor(brainwaves, totalVoltage);
+            const c = result.color;
+            
+            // MUCH MORE VIVID COLORS - Boost saturation!
+            const boostR = Math.min(255, c.r * 1.3);
+            const boostG = Math.min(255, c.g * 1.3);
+            const boostB = Math.min(255, c.b * 1.3);
+            
+            // Create MULTIPLE gradients for depth
+            const grad1 = ctx.createRadialGradient(cx - 50, cy - 50, 10, cx, cy, radius);
+            grad1.addColorStop(0, `rgb(${Math.min(255, boostR + 80)}, ${Math.min(255, boostG + 80)}, ${Math.min(255, boostB + 80)})`);
+            grad1.addColorStop(0.4, `rgb(${boostR}, ${boostG}, ${boostB})`);
+            grad1.addColorStop(0.7, `rgb(${Math.max(0, boostR - 40)}, ${Math.max(0, boostG - 40)}, ${Math.max(0, boostB - 40)})`);
+            grad1.addColorStop(1, `rgb(${Math.max(0, boostR - 80)}, ${Math.max(0, boostG - 80)}, ${Math.max(0, boostB - 80)})`);
+            
+            // Main sphere with glow
+            ctx.shadowColor = `rgba(${boostR}, ${boostG}, ${boostB}, 0.6)`;
+            ctx.shadowBlur = 40;
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.fillStyle = grad1;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Add inner glow
+            const grad2 = ctx.createRadialGradient(cx - 30, cy - 30, 0, cx, cy, radius * 0.6);
+            grad2.addColorStop(0, `rgba(255, 255, 255, 0.3)`);
+            grad2.addColorStop(1, `rgba(${boostR}, ${boostG}, ${boostB}, 0)`);
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.fillStyle = grad2;
+            ctx.fill();
+            
+            // SMOOTHER, MORE FLUID wireframe
+            ctx.strokeStyle = `rgba(255, 255, 255, 0.08)`;
+            ctx.lineWidth = 1.5;
+            
+            // Latitude lines (more of them for fluidity)
+            for (let i = -3; i <= 3; i++) {
+                const y = cy + (i * radius / 4);
+                const r = Math.sqrt(radius * radius - (i * radius / 4) * (i * radius / 4));
+                if (r > 0) {
+                    ctx.beginPath();
+                    ctx.ellipse(cx, y, r, r * 0.25, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
+            
+            // Longitude lines - SMOOTH rotation
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI + rotation;
+                const rx = radius * Math.abs(Math.cos(angle));
+                ctx.beginPath();
+                ctx.ellipse(cx, cy, rx, radius, Math.PI / 2, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            
+            rotation += 0.008; // Slower, smoother rotation
+            requestAnimationFrame(drawSphere);
+        }
+
+        // Disconnect
+        async function disconnectMuse() {
+            if (device && device.gatt.connected) {
+                await device.gatt.disconnect();
+            }
+            // Also stop fake data if running
+            if (fakeMode) {
+                toggleFakeData();
+            }
+        }
+
+        function onDisconnected() {
+            connected = false;
+            updateStatus('⚠️ Disconnected');
+            document.getElementById('connectionIndicator').className = 'w-4 h-4 rounded-full bg-red-500 animate-pulse';
+            document.getElementById('connectBtn').disabled = fakeMode; // Keep disabled if in fake mode
+            document.getElementById('disconnectBtn').disabled = true;
+            if (!fakeMode) {
+                document.getElementById('deviceName').textContent = 'Not connected';
+            }
+        }
+
+        function updateStatus(msg) {
+            document.getElementById('statusText').textContent = msg;
+        }
+
+        // Check support
+        if (!navigator.bluetooth) {
+            updateStatus('❌ Web Bluetooth not supported. Use Chrome, Edge, or Opera.');
+            document.getElementById('connectBtn').disabled = true;
+        }
+
+        // Start animation
+        drawSphere();
+    </script>
+</body>
+</html>

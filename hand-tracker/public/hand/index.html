@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hand Tracking + MI Dice</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="min-h-screen bg-black p-8">
+    <div class="max-w-7xl mx-auto">
+        
+        <!-- Header -->
+        <div class="text-center mb-6">
+            <h1 class="text-4xl font-bold text-white mb-2">Hand-Controlled Mind Dice</h1>
+            <p class="text-gray-400">Point finger 0.5s to select • Left eye = spin • Right eye = flash red • 🤌 Rotate hand = spin!</p>
+            <p id="statusText" class="text-sm text-gray-500 mt-2">Ready</p>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex justify-center gap-3 mb-6 flex-wrap">
+            <button id="startHand" 
+                class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-all">
+                ✋ Start Hand Tracking
+            </button>
+            <button id="connectBtn" 
+                class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-all">
+                🔗 Connect Muse
+            </button>
+            <button id="toggleWaves" 
+                class="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-lg transition-all">
+                👁️ Hide Waves
+            </button>
+            <button id="fakeDataBtn" 
+                class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg transition-all">
+                🎭 Demo Mode
+            </button>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="flex justify-center gap-8 mb-8">
+            <div class="flex items-center gap-2">
+                <div id="handIndicator" class="w-3 h-3 rounded-full bg-gray-500"></div>
+                <span class="text-gray-400 text-sm" id="trackingMode">Mouse</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div id="museIndicator" class="w-3 h-3 rounded-full bg-red-500"></div>
+                <span class="text-gray-400 text-sm">Muse</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div id="signalQuality" class="w-3 h-3 rounded-full bg-gray-500"></div>
+                <span class="text-gray-400 text-sm">Signal: <span id="signalText">--</span></span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-gray-400 text-sm">Blinks: <span id="totalBlinks" class="text-white font-bold">0</span></span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-gray-400 text-sm">Spins: <span id="totalSpins" class="text-white font-bold">0</span></span>
+            </div>
+        </div>
+
+        <!-- Hand Tracking Preview -->
+        <div id="handContainer" class="mb-8 bg-gray-900 rounded-lg p-4 border border-gray-800 hidden">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-lg font-semibold text-white">Hand Tracking View</h3>
+                <div class="text-sm text-gray-400">
+                    Speed: <span id="handSpeed" class="text-white">0</span> px/s
+                </div>
+            </div>
+            <div class="relative max-w-md mx-auto">
+                <video id="webcam" autoplay playsinline class="w-full rounded-lg"></video>
+                <canvas id="handCanvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+            </div>
+            <div class="mt-2 flex justify-between text-xs text-gray-400">
+                <span>Point with your index finger</span>
+                <span id="handStatus" class="text-green-400">Hand detected ✓</span>
+            </div>
+        </div>
+
+        <!-- Main Game Canvas -->
+        <div class="mb-8">
+            <canvas id="gameCanvas" width="1200" height="700" class="w-full rounded-lg border border-gray-800"></canvas>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- 4-Channel EEG Streams (spans 2 columns) -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800 lg:col-span-2">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-white">📊 Live EEG Streams</h2>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm text-gray-400">Amplitude:</label>
+                            <input type="range" id="amplitudeSlider" min="5" max="1500" value="1500" class="w-32">
+                            <span id="amplitudeValue" class="text-white text-sm w-16">1500µV</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm text-gray-400">Filter:</label>
+                            <input type="range" id="filterSlider" min="0" max="10" value="5" class="w-32">
+                            <span id="filterValue" class="text-white text-sm w-12">5</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm text-gray-400">Time:</label>
+                            <select id="timeScaleSelect" class="bg-gray-800 text-white px-2 py-1 rounded border border-gray-700 text-sm">
+                                <option value="2">2s</option>
+                                <option value="4">4s</option>
+                                <option value="8" selected>8s</option>
+                                <option value="16">16s</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- TP9 Channel -->
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <div class="flex items-center gap-2">
+                            <div id="tp9-led" class="w-2 h-2 rounded-full bg-gray-700"></div>
+                            <span class="text-sm font-semibold text-purple-400">TP9 (Left Ear)</span>
+                        </div>
+                        <span class="text-xs text-gray-500">Current: <span id="tp9-current" class="text-purple-400">0.0µV</span></span>
+                    </div>
+                    <canvas id="tp9Canvas" width="1000" height="100" class="w-full rounded bg-black"></canvas>
+                </div>
+
+                <!-- AF7 Channel -->
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <div class="flex items-center gap-2">
+                            <div id="af7-led" class="w-2 h-2 rounded-full bg-gray-700"></div>
+                            <span class="text-sm font-semibold text-green-400">AF7 (Left Front) - Left Eye</span>
+                        </div>
+                        <span class="text-xs text-gray-500">Current: <span id="af7-current" class="text-green-400">0.0µV</span></span>
+                    </div>
+                    <canvas id="af7Canvas" width="1000" height="100" class="w-full rounded bg-black"></canvas>
+                </div>
+
+                <!-- AF8 Channel -->
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <div class="flex items-center gap-2">
+                            <div id="af8-led" class="w-2 h-2 rounded-full bg-gray-700"></div>
+                            <span class="text-sm font-semibold text-blue-400">AF8 (Right Front) - Right Eye ⚡</span>
+                        </div>
+                        <span class="text-xs text-gray-500">Current: <span id="af8-current" class="text-blue-400">0.0µV</span></span>
+                    </div>
+                    <canvas id="af8Canvas" width="1000" height="100" class="w-full rounded bg-black"></canvas>
+                </div>
+
+                <!-- TP10 Channel -->
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <div class="flex items-center gap-2">
+                            <div id="tp10-led" class="w-2 h-2 rounded-full bg-gray-700"></div>
+                            <span class="text-sm font-semibold text-orange-400">TP10 (Right Ear)</span>
+                        </div>
+                        <span class="text-xs text-gray-500">Current: <span id="tp10-current" class="text-orange-400">0.0µV</span></span>
+                    </div>
+                    <canvas id="tp10Canvas" width="1000" height="100" class="w-full rounded bg-black"></canvas>
+                </div>
+
+                <div class="mt-3 p-3 bg-black rounded">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="text-sm text-gray-400 mb-1">Signal Quality</div>
+                            <div class="w-64 bg-gray-800 rounded-full h-2">
+                                <div id="qualityBar" class="bg-green-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            <span>🟢 LEFT eye (AF7) → Spin dice | 🔴 RIGHT eye (AF8) → Flash red 1s</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Brain Waves (Collapsible) -->
+            <div id="wavesPanel" class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <h2 class="text-xl font-semibold text-white mb-4">🧠 Brain Waves</h2>
+                <div class="space-y-3">
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-400">Alpha (Relax)</span>
+                            <span id="alphaValue" class="text-green-400">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-800 rounded-full h-2">
+                            <div id="alphaBar" class="bg-green-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-400">Beta (Focus)</span>
+                            <span id="betaValue" class="text-blue-400">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-800 rounded-full h-2">
+                            <div id="betaBar" class="bg-blue-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-400">Theta</span>
+                            <span id="thetaValue" class="text-purple-400">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-800 rounded-full h-2">
+                            <div id="thetaBar" class="bg-purple-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-400">Delta</span>
+                            <span id="deltaValue" class="text-red-400">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-800 rounded-full h-2">
+                            <div id="deltaBar" class="bg-red-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EEG Channels -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <h2 class="text-xl font-semibold text-white mb-4">📡 EEG Channels</h2>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div class="bg-black p-3 rounded">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div id="tp9-status" class="w-2 h-2 rounded-full bg-gray-700"></div>
+                            <span class="text-white font-semibold">TP9</span>
+                        </div>
+                        <div class="text-xs text-gray-500">Left Ear</div>
+                        <div class="text-xs text-gray-600 mt-1">Noise: <span id="tp9-noise">--</span></div>
+                    </div>
+                    <div class="bg-black p-3 rounded">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div id="af7-status" class="w-2 h-2 rounded-full bg-gray-700"></div>
+                            <span class="text-white font-semibold">AF7</span>
+                        </div>
+                        <div class="text-xs text-gray-500">Left Front</div>
+                        <div class="text-xs text-gray-600 mt-1">Noise: <span id="af7-noise">--</span></div>
+                    </div>
+                    <div class="bg-black p-3 rounded">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div id="af8-status" class="w-2 h-2 rounded-full bg-gray-700"></div>
+                            <span class="text-white font-semibold">AF8</span>
+                        </div>
+                        <div class="text-xs text-gray-500">Right Front</div>
+                        <div class="text-xs text-gray-600 mt-1">Noise: <span id="af8-noise">--</span></div>
+                    </div>
+                    <div class="bg-black p-3 rounded">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div id="tp10-status" class="w-2 h-2 rounded-full bg-gray-700"></div>
+                            <span class="text-white font-semibold">TP10</span>
+                        </div>
+                        <div class="text-xs text-gray-500">Right Ear</div>
+                        <div class="text-xs text-gray-600 mt-1">Noise: <span id="tp10-noise">--</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="mt-6 bg-gray-900 rounded-lg p-4 border border-gray-800">
+            <div class="text-gray-400 text-sm space-y-1">
+                <p><strong class="text-white">Hand Control:</strong> Point index finger steady for 0.5s to select dice (turns gold)</p>
+                <p><strong class="text-white">🤌 Italian Gesture:</strong> Rotate your hand 90+ degrees (like flipping) to spin selected dice!</p>
+                <p><strong class="text-white">Amplitude Slider:</strong> 5-1500µV scale - at 1500µV you see almost no variation unless significant spike</p>
+                <p><strong class="text-white">Filter Slider (0-10):</strong> Higher = smoother signal, less noise. At 10 = near-zero baseline</p>
+                <p><strong class="text-white">Time Scale:</strong> 2-16 seconds of signal history displayed</p>
+                <p><strong class="text-white">🟢 LEFT Eye Blink:</strong> AF7 spike >200µV and 2x stronger than AF8 → SPINS selected dice 🎲</p>
+                <p><strong class="text-white">🔴 RIGHT Eye Blink:</strong> AF8 spike >200µV and 2x stronger than AF7 → FLASHES dice RED for 1 second</p>
+                <p><strong class="text-white">Console (F12):</strong> See detailed blink detection: LEFT/RIGHT/BOTH with voltage levels</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MediaPipe Hands for hand tracking -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+
+    <!-- Application Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/signal-processing.js"></script>
+    <script src="js/blink-detection.js"></script>
+    <script src="js/hand-tracking.js"></script>
+    <script src="js/muse-connection.js"></script>
+    <script src="js/eeg-visualization.js"></script>
+    <script src="js/game-logic.js"></script>
+    <script src="js/ui-controls.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

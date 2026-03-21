@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation - APO Technology</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            color: #1a1a1a;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* Navigation */
+        .navbar {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+            padding: 20px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .navbar-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .back-link {
+            color: #1a1a1a;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: opacity 0.2s ease;
+        }
+
+        .back-link:hover {
+            opacity: 0.6;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 80px 20px 60px;
+            text-align: center;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .header h1 {
+            font-size: 3em;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #1a1a1a;
+            letter-spacing: -0.03em;
+        }
+
+        .header p {
+            font-size: 1.15em;
+            color: #666;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+
+        /* Filter Tags */
+        .filter-section {
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .filter-tags {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-tag {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 20px;
+            font-size: 0.9em;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .filter-tag:hover {
+            background: rgba(255, 255, 255, 1);
+            border-color: #1a1a1a;
+            color: #1a1a1a;
+        }
+
+        .filter-tag.active {
+            background: #1a1a1a;
+            color: white;
+            border-color: #1a1a1a;
+        }
+
+        /* Papers List */
+        .papers-list {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* Paper Card */
+        .paper-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 12px;
+            padding: 32px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .paper-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+            border-color: rgba(0, 0, 0, 0.15);
+        }
+
+        /* Paper Metadata */
+        .paper-meta {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 16px;
+            font-size: 0.85em;
+            flex-wrap: wrap;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #666;
+        }
+
+        .meta-label {
+            font-weight: 600;
+            color: #1a1a1a;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.9em;
+        }
+
+        .meta-value {
+            color: #555;
+        }
+
+        /* Theme Tag */
+        .theme-tag {
+            display: inline-block;
+            padding: 4px 12px;
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+
+        /* Paper Title */
+        .paper-title {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 12px;
+            line-height: 1.3;
+        }
+
+        /* Authors */
+        .paper-authors {
+            color: #666;
+            font-size: 0.95em;
+            margin-bottom: 16px;
+            font-style: italic;
+        }
+
+        /* Abstract */
+        .paper-abstract {
+            color: #555;
+            line-height: 1.7;
+            margin-bottom: 20px;
+            font-size: 0.98em;
+        }
+
+        /* Paper Actions */
+        .paper-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .btn-primary {
+            display: inline-block;
+            padding: 10px 24px;
+            background: #1a1a1a;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 0.9em;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            background: #000;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-secondary {
+            display: inline-block;
+            padding: 10px 24px;
+            background: transparent;
+            color: #1a1a1a;
+            text-decoration: none;
+            border: 1px solid rgba(0, 0, 0, 0.15);
+            border-radius: 6px;
+            font-size: 0.9em;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        /* Publication Info */
+        .publication-info {
+            display: flex;
+            gap: 16px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(0, 0, 0, 0.08);
+            font-size: 0.85em;
+            color: #666;
+            flex-wrap: wrap;
+        }
+
+        .pub-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Placeholder Card */
+        .placeholder-card {
+            background: rgba(255, 255, 255, 0.5);
+            border: 2px dashed rgba(0, 0, 0, 0.15);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            color: #999;
+        }
+
+        .placeholder-card h3 {
+            font-size: 1.2em;
+            margin-bottom: 8px;
+            color: #666;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .paper-card {
+                padding: 24px;
+            }
+
+            .paper-title {
+                font-size: 1.3em;
+            }
+
+            .paper-meta {
+                gap: 16px;
+            }
+
+            .paper-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+
+        /* Animation */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .paper-card {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        .paper-card:nth-child(1) { animation-delay: 0.1s; }
+        .paper-card:nth-child(2) { animation-delay: 0.2s; }
+        .paper-card:nth-child(3) { animation-delay: 0.3s; }
+        .paper-card:nth-child(4) { animation-delay: 0.4s; }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="../index.html" class="back-link">← Back to Home</a>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <div class="header">
+        <h1>Research Documentation</h1>
+        <p>Curated collection of scientific papers and research on brain-computer interfaces</p>
+    </div>
+
+    <!-- Container -->
+    <div class="container">
+        
+        <!-- Filter Section -->
+        <div class="filter-section">
+            <div class="filter-tags">
+                <span class="filter-tag active">All Papers</span>
+                <span class="filter-tag">Robotic Control</span>
+                <span class="filter-tag">Noninvasive BCI</span>
+                <span class="filter-tag">Machine Learning</span>
+                <span class="filter-tag">Clinical Applications</span>
+            </div>
+        </div>
+
+        <!-- Papers List -->
+        <div class="papers-list">
+
+            <!-- Paper 1: Carnegie Mellon -->
+            <article class="paper-card">
+                <div class="paper-meta">
+                    <div class="meta-item">
+                        <span class="meta-label">Date:</span>
+                        <span class="meta-value">June 19, 2019</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Theme:</span>
+                        <span class="theme-tag">Noninvasive BCI • Robotic Control</span>
+                    </div>
+                </div>
+
+                <h2 class="paper-title">Noninvasive neuroimaging enhances continuous neural tracking for robotic device control</h2>
+
+                <p class="paper-authors">
+                    B.J. Edelman, J. Meng, D. Suma, C. Zurn, E. Nagarajan, B.S. Baxter, C.C. Cline, B. He
+                </p>
+
+                <p class="paper-abstract">
+                    This groundbreaking research demonstrates a systematic approach to achieving continuous robotic arm control through noninvasive brain-computer interfaces. The study achieved 60% improvement in BCI learning speed and 500% enhancement in continuous tracking ability using novel sensing and machine learning techniques with EEG source imaging.
+                </p>
+
+                <div class="paper-actions">
+                    <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6814169/" target="_blank" class="btn-primary">Read Full Paper →</a>
+                    <a href="#" class="btn-secondary">Download PDF</a>
+                </div>
+
+                <div class="publication-info">
+                    <div class="pub-item">
+                        <strong>Journal:</strong> Science Robotics
+                    </div>
+                    <div class="pub-item">
+                        <strong>Institution:</strong> Carnegie Mellon University, University of Minnesota
+                    </div>
+                    <div class="pub-item">
+                        <strong>DOI:</strong> 10.1126/scirobotics.aaw6844
+                    </div>
+                </div>
+            </article>
+
+            <!-- Placeholder 1 -->
+            <article class="placeholder-card">
+                <h3>Additional Research Paper</h3>
+                <p>More scientific papers will be added here</p>
+            </article>
+
+            <!-- Placeholder 2 -->
+            <article class="placeholder-card">
+                <h3>Additional Research Paper</h3>
+                <p>More scientific papers will be added here</p>
+            </article>
+
+            <!-- Placeholder 3 -->
+            <article class="placeholder-card">
+                <h3>Additional Research Paper</h3>
+                <p>More scientific papers will be added here</p>
+            </article>
+
+        </div>
+    </div>
+
+</body>
+</html>

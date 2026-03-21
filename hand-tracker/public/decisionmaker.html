@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hand Tracking Decision Dice</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+        }
+
+        #videoElement {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.4;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .ui-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            max-width: 320px;
+            z-index: 1000;
+            color: white;
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            color: #4ecdc4;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 0.85em;
+            text-align: center;
+        }
+
+        .status.loading {
+            background: rgba(255, 193, 7, 0.3);
+            color: #ffc107;
+            border: 1px solid #ffc107;
+        }
+
+        .status.ready {
+            background: rgba(76, 175, 80, 0.3);
+            color: #4caf50;
+            border: 1px solid #4caf50;
+        }
+
+        .status.grabbing {
+            background: rgba(33, 150, 243, 0.3);
+            color: #2196f3;
+            border: 1px solid #2196f3;
+        }
+
+        .status.error {
+            background: rgba(244, 67, 54, 0.3);
+            color: #f44336;
+            border: 1px solid #f44336;
+        }
+
+        .input-section {
+            margin-top: 15px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #4ecdc4;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        input[type="text"]::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #45b8b0;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .add-btn {
+            background: #4ecdc4;
+            color: #000;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .add-btn:hover {
+            background: #45b8b0;
+            transform: translateY(-2px);
+        }
+
+        .option-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85em;
+        }
+
+        .remove-btn {
+            background: #ff6b6b;
+            color: white;
+            padding: 5px 10px;
+            font-size: 0.75em;
+        }
+
+        .remove-btn:hover {
+            background: #ff5252;
+        }
+
+        .instructions {
+            background: rgba(78, 205, 196, 0.2);
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 0.8em;
+            border: 1px solid #4ecdc4;
+        }
+
+        .instructions strong {
+            color: #4ecdc4;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        #result {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 40px 60px;
+            border-radius: 20px;
+            text-align: center;
+            display: none;
+            z-index: 2000;
+            box-shadow: 0 20px 60px rgba(78, 205, 196, 0.5);
+            border: 2px solid #4ecdc4;
+            animation: popIn 0.5s ease-out;
+            color: white;
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: translate(-50%, -50%) scale(0.5);
+                opacity: 0;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+        }
+
+        #result h2 {
+            color: #4ecdc4;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        #result .choice {
+            font-size: 2.5em;
+            color: #fff;
+            font-weight: bold;
+            margin: 20px 0;
+            text-shadow: 0 0 20px rgba(78, 205, 196, 0.8);
+        }
+
+        .close-btn {
+            background: #4ecdc4;
+            color: #000;
+            padding: 12px 30px;
+            margin-top: 20px;
+            font-size: 1em;
+        }
+
+        .close-btn:hover {
+            background: #45b8b0;
+        }
+
+        .hand-point {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #4ecdc4;
+            border: 3px solid white;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 998;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 20px rgba(78, 205, 196, 0.8);
+            transition: all 0.1s;
+            display: none;
+        }
+
+        .hand-point.grabbing {
+            background: #2196f3;
+            width: 30px;
+            height: 30px;
+            box-shadow: 0 0 30px rgba(33, 150, 243, 1);
+        }
+
+        #debugInfo {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #4ecdc4;
+            padding: 15px;
+            border-radius: 10px;
+            font-family: monospace;
+            font-size: 0.75em;
+            z-index: 1000;
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <video id="videoElement" autoplay playsinline></video>
+        <canvas id="canvas"></canvas>
+        
+        <div class="hand-point" id="handPoint"></div>
+        
+        <div class="ui-panel">
+            <h1>🎲 Hand Tracking Dice</h1>
+            <div class="status loading" id="status">Initializing...</div>
+            
+            <div class="input-section">
+                <input type="text" id="optionInput" placeholder="Enter option..." />
+                <button class="add-btn" id="addBtn">Add Option</button>
+                <div id="optionsList"></div>
+            </div>
+
+            <div class="instructions">
+                <strong>How to use:</strong>
+                1. Add 2-6 options<br>
+                2. Open hand to see the dice<br>
+                3. Close fist to grab<br>
+                4. Move hand while grabbed<br>
+                5. Open hand fast to throw!<br>
+                6. Point finger for 0.3s to roll again
+            </div>
+        </div>
+
+        <div id="result">
+            <h2>🎯 You Should</h2>
+            <div class="choice" id="resultChoice"></div>
+            <button class="close-btn" id="closeBtn">Throw Again</button>
+        </div>
+
+        <div id="debugInfo">
+            Hand: <span id="handStatus">None</span><br>
+            Grabbing: <span id="grabStatus">No</span><br>
+            Dice State: <span id="diceStatus">Idle</span><br>
+            Options: <span id="optionCount">0</span>
+        </div>
+    </div>
+
+    <!-- Load scripts in correct order -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        let options = ['Option 1', 'Option 2', 'Option 3', 'Option 4', 'Option 5', 'Option 6'];
+        let scene, camera, renderer, dice;
+        let handDetected = false;
+        let isGrabbing = false;
+        let wasGrabbing = false;
+        let isPointing = false;
+        let pointingStartTime = 0;
+        let handPosition = { x: 0, y: 0, z: 0 };
+        let lastHandPosition = { x: 0, y: 0, z: 0 };
+        let handVelocity = { x: 0, y: 0, z: 0 };
+        let diceVelocity = { x: 0, y: 0, z: 0 };
+        let diceAngularVelocity = { x: 0, y: 0, z: 0 };
+        let isRolling = false;
+        let isDiceGrabbed = false;
+        let showingResult = false;
+        let rollingStartTime = 0;
+        let rollingTimeout = null;
+        let groundY = -2;
+        let handsInstance = null;
+
+        // Setup Three.js with better 3D dice
+        function initThreeJS() {
+            const canvas = document.getElementById('canvas');
+            scene = new THREE.Scene();
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 2, 6);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+
+            // Better lighting for 3D effect
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight1.position.set(5, 5, 5);
+            directionalLight1.castShadow = true;
+            scene.add(directionalLight1);
+
+            const directionalLight2 = new THREE.DirectionalLight(0x4ecdc4, 0.4);
+            directionalLight2.position.set(-5, 3, -5);
+            scene.add(directionalLight2);
+
+            // Point light for extra depth
+            const pointLight = new THREE.PointLight(0x4ecdc4, 1, 100);
+            pointLight.position.set(0, 5, 0);
+            scene.add(pointLight);
+
+            // Create dice
+            createDice();
+
+            // Ground plane with grid
+            const gridHelper = new THREE.GridHelper(20, 20, 0x4ecdc4, 0x222222);
+            gridHelper.position.y = groundY;
+            scene.add(gridHelper);
+
+            animate();
+        }
+
+        function createDice() {
+            // Create rounded cube geometry for more realistic dice
+            const geometry = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+            geometry.computeVertexNormals();
+            
+            // Get valid options (not default placeholders)
+            const validOptions = [];
+            options.forEach((opt, i) => {
+                if (opt !== `Option ${i + 1}`) {
+                    validOptions.push(opt);
+                }
+            });
+            
+            // Determine face distribution based on number of options
+            let faceTexts = [];
+            if (validOptions.length === 0) {
+                // Default faces
+                faceTexts = ['Option 1', 'Option 2', 'Option 3', 'Option 4', 'Option 5', 'Option 6'];
+            } else if (validOptions.length === 1) {
+                // All same
+                faceTexts = Array(6).fill(validOptions[0]);
+            } else if (validOptions.length === 2) {
+                // Repeat both options 3 times each
+                faceTexts = [
+                    validOptions[0], validOptions[1], 
+                    validOptions[0], validOptions[1],
+                    validOptions[0], validOptions[1]
+                ];
+            } else if (validOptions.length === 3) {
+                // Each option twice
+                faceTexts = [
+                    validOptions[0], validOptions[1], validOptions[2],
+                    validOptions[0], validOptions[1], validOptions[2]
+                ];
+            } else if (validOptions.length === 4) {
+                // First two repeated, last two once each
+                faceTexts = [
+                    validOptions[0], validOptions[1], 
+                    validOptions[2], validOptions[3],
+                    validOptions[0], validOptions[1]
+                ];
+            } else if (validOptions.length === 5) {
+                // First option repeated
+                faceTexts = [
+                    validOptions[0], validOptions[1], validOptions[2],
+                    validOptions[3], validOptions[4], validOptions[0]
+                ];
+            } else {
+                // All 6 options
+                faceTexts = validOptions.slice(0, 6);
+            }
+            
+            // Create materials with better colors and text
+            const materials = [];
+            const colors = [
+                0xff6b6b, // Red
+                0x4ecdc4, // Cyan
+                0xffe66d, // Yellow
+                0xa8e6cf, // Green
+                0xff8b94, // Pink
+                0x95a3ff  // Purple
+            ];
+            
+            for (let i = 0; i < 6; i++) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 512;
+                canvas.height = 512;
+                const ctx = canvas.getContext('2d');
+                
+                // Background with gradient
+                const gradient = ctx.createLinearGradient(0, 0, 512, 512);
+                gradient.addColorStop(0, '#' + colors[i].toString(16).padStart(6, '0'));
+                gradient.addColorStop(1, '#' + Math.floor(colors[i] * 0.7).toString(16).padStart(6, '0'));
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 512, 512);
+                
+                // Border with shadow effect
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 12;
+                ctx.strokeRect(6, 6, 500, 500);
+                
+                // Inner shadow
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.lineWidth = 8;
+                ctx.strokeRect(12, 12, 488, 488);
+                
+                // Text with better formatting
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 3;
+                ctx.font = 'bold 56px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                const text = faceTexts[i];
+                const maxWidth = 450;
+                const words = text.split(' ');
+                const lines = [];
+                let currentLine = words[0];
+
+                for (let j = 1; j < words.length; j++) {
+                    const testLine = currentLine + ' ' + words[j];
+                    const metrics = ctx.measureText(testLine);
+                    if (metrics.width > maxWidth) {
+                        lines.push(currentLine);
+                        currentLine = words[j];
+                    } else {
+                        currentLine = testLine;
+                    }
+                }
+                lines.push(currentLine);
+
+                const lineHeight = 70;
+                const startY = 256 - ((lines.length - 1) * lineHeight) / 2;
+
+                lines.forEach((line, idx) => {
+                    const y = startY + idx * lineHeight;
+                    ctx.strokeText(line, 256, y);
+                    ctx.fillText(line, 256, y);
+                });
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+                materials.push(new THREE.MeshPhongMaterial({ 
+                    map: texture,
+                    shininess: 30,
+                    specular: 0x444444
+                }));
+            }
+            
+            if (dice) scene.remove(dice);
+            dice = new THREE.Mesh(geometry, materials);
+            dice.position.set(0, 0, 0);
+            dice.castShadow = true;
+            dice.receiveShadow = true;
+            dice.userData.faceTexts = faceTexts; // Store face texts for result reading
+            
+            // Add some initial rotation for visual interest
+            dice.rotation.set(0.2, 0.3, 0.1);
+            
+            scene.add(dice);
+            updateDebug();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (isRolling) {
+                // Apply physics
+                dice.position.x += diceVelocity.x;
+                dice.position.y += diceVelocity.y;
+                dice.position.z += diceVelocity.z;
+
+                dice.rotation.x += diceAngularVelocity.x;
+                dice.rotation.y += diceAngularVelocity.y;
+                dice.rotation.z += diceAngularVelocity.z;
+
+                // Gravity
+                diceVelocity.y -= 0.015;
+
+                // Ground collision with better physics
+                if (dice.position.y <= groundY + 0.75) {
+                    dice.position.y = groundY + 0.75;
+                    diceVelocity.y *= -0.6;
+                    diceVelocity.x *= 0.85;
+                    diceVelocity.z *= 0.85;
+                    diceAngularVelocity.x *= 0.8;
+                    diceAngularVelocity.y *= 0.8;
+                    diceAngularVelocity.z *= 0.8;
+
+                    // Apply stabilization force to align dice flat on ground
+                    const alignSpeed = 0.08;
+                    
+                    // Find the target rotation to make dice flat
+                    const upVector = new THREE.Vector3(0, 1, 0);
+                    const faces = [
+                        { normal: new THREE.Vector3(1, 0, 0), rotation: new THREE.Euler(0, 0, Math.PI / 2) },
+                        { normal: new THREE.Vector3(-1, 0, 0), rotation: new THREE.Euler(0, 0, -Math.PI / 2) },
+                        { normal: new THREE.Vector3(0, 1, 0), rotation: new THREE.Euler(0, 0, 0) },
+                        { normal: new THREE.Vector3(0, -1, 0), rotation: new THREE.Euler(Math.PI, 0, 0) },
+                        { normal: new THREE.Vector3(0, 0, 1), rotation: new THREE.Euler(Math.PI / 2, 0, 0) },
+                        { normal: new THREE.Vector3(0, 0, -1), rotation: new THREE.Euler(-Math.PI / 2, 0, 0) }
+                    ];
+                    
+                    // Find which face is closest to up
+                    let maxDot = -Infinity;
+                    let targetRotation = null;
+                    
+                    faces.forEach(face => {
+                        const worldNormal = face.normal.clone();
+                        worldNormal.applyQuaternion(dice.quaternion);
+                        const dot = worldNormal.dot(upVector);
+                        if (dot > maxDot) {
+                            maxDot = dot;
+                            targetRotation = face.rotation;
+                        }
+                    });
+                    
+                    // Smoothly rotate towards target
+                    if (targetRotation) {
+                        const targetQuat = new THREE.Quaternion().setFromEuler(targetRotation);
+                        dice.quaternion.slerp(targetQuat, alignSpeed);
+                    }
+                    
+                    // Reduce angular velocity as it stabilizes
+                    diceAngularVelocity.x *= 0.7;
+                    diceAngularVelocity.y *= 0.7;
+                    diceAngularVelocity.z *= 0.7;
+
+                    // Stop if almost stopped
+                    if (Math.abs(diceVelocity.y) < 0.02 && 
+                        Math.abs(diceVelocity.x) < 0.01 && 
+                        Math.abs(diceVelocity.z) < 0.01 &&
+                        Math.abs(diceAngularVelocity.x) < 0.02 &&
+                        Math.abs(diceAngularVelocity.y) < 0.02 &&
+                        Math.abs(diceAngularVelocity.z) < 0.02) {
+                        isRolling = false;
+                        diceVelocity = { x: 0, y: 0, z: 0 };
+                        diceAngularVelocity = { x: 0, y: 0, z: 0 };
+                        
+                        // Clear timeout since we stopped naturally
+                        if (rollingTimeout) {
+                            clearTimeout(rollingTimeout);
+                            rollingTimeout = null;
+                        }
+                        
+                        // Final snap to perfectly flat with the top face pointing UP (opposite to floor)
+                        const upVector = new THREE.Vector3(0, 1, 0);
+                        const faces = [
+                            { normal: new THREE.Vector3(1, 0, 0), rotation: new THREE.Euler(0, 0, Math.PI / 2), index: 0 },
+                            { normal: new THREE.Vector3(-1, 0, 0), rotation: new THREE.Euler(0, 0, -Math.PI / 2), index: 1 },
+                            { normal: new THREE.Vector3(0, 1, 0), rotation: new THREE.Euler(0, 0, 0), index: 2 },
+                            { normal: new THREE.Vector3(0, -1, 0), rotation: new THREE.Euler(Math.PI, 0, 0), index: 3 },
+                            { normal: new THREE.Vector3(0, 0, 1), rotation: new THREE.Euler(Math.PI / 2, 0, 0), index: 4 },
+                            { normal: new THREE.Vector3(0, 0, -1), rotation: new THREE.Euler(-Math.PI / 2, 0, 0), index: 5 }
+                        ];
+                        
+                        let maxDot = -Infinity;
+                        let topFaceData = null;
+                        
+                        // Find which face normal is most aligned with UP (pointing away from floor)
+                        faces.forEach(face => {
+                            const worldNormal = face.normal.clone();
+                            worldNormal.applyQuaternion(dice.quaternion);
+                            const dot = worldNormal.dot(upVector);
+                            if (dot > maxDot) {
+                                maxDot = dot;
+                                topFaceData = face;
+                            }
+                        });
+                        
+                        if (topFaceData) {
+                            dice.rotation.copy(topFaceData.rotation);
+                        }
+                        
+                        setTimeout(showResult, 500);
+                    }
+                }
+
+                // Air resistance
+                diceVelocity.x *= 0.995;
+                diceVelocity.z *= 0.995;
+                diceAngularVelocity.x *= 0.995;
+                diceAngularVelocity.y *= 0.995;
+                diceAngularVelocity.z *= 0.995;
+                
+                updateDebug();
+            } else if (isDiceGrabbed && handDetected) {
+                // Smooth follow with interpolation
+                const targetX = (handPosition.x - 0.5) * 10;
+                const targetY = -(handPosition.y - 0.5) * 8 + 2;
+                const targetZ = (handPosition.z + 0.5) * 3;
+                
+                dice.position.x += (targetX - dice.position.x) * 0.15;
+                dice.position.y += (targetY - dice.position.y) * 0.15;
+                dice.position.z += (targetZ - dice.position.z) * 0.15;
+                
+                // Slight rotation while holding
+                dice.rotation.x += 0.01;
+                dice.rotation.y += 0.015;
+                
+                updateDebug();
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function throwDice() {
+            if (options.filter((opt, i) => opt !== `Option ${i + 1}`).length < 2) {
+                updateStatus('Add at least 2 options!', 'error');
+                return;
+            }
+
+            isRolling = true;
+            isDiceGrabbed = false;
+            rollingStartTime = Date.now();
+            
+            // Set timeout to force result after 4 seconds
+            if (rollingTimeout) {
+                clearTimeout(rollingTimeout);
+            }
+            rollingTimeout = setTimeout(() => {
+                if (isRolling) {
+                    console.log('Forcing result after 4 second timeout');
+                    forceStopAndShowResult();
+                }
+            }, 4000);
+            
+            // Use hand velocity for throw
+            const power = 2.5;
+            diceVelocity.x = handVelocity.x * power + (Math.random() - 0.5) * 0.1;
+            diceVelocity.y = Math.abs(handVelocity.y) * power + 0.3;
+            diceVelocity.z = handVelocity.z * power + (Math.random() - 0.5) * 0.1;
+            
+            diceAngularVelocity.x = (Math.random() - 0.5) * 0.4;
+            diceAngularVelocity.y = (Math.random() - 0.5) * 0.4;
+            diceAngularVelocity.z = (Math.random() - 0.5) * 0.4;
+            
+            updateStatus('Rolling...', 'loading');
+            updateDebug();
+        }
+
+        function forceStopAndShowResult() {
+            // Stop all motion
+            isRolling = false;
+            diceVelocity = { x: 0, y: 0, z: 0 };
+            diceAngularVelocity = { x: 0, y: 0, z: 0 };
+            
+            // Make sure dice is on ground
+            dice.position.y = groundY + 0.75;
+            
+            // Find the face that is pointing UP (opposite to floor)
+            const upVector = new THREE.Vector3(0, 1, 0);
+            const faces = [
+                { normal: new THREE.Vector3(1, 0, 0), rotation: new THREE.Euler(0, 0, Math.PI / 2), index: 0 },
+                { normal: new THREE.Vector3(-1, 0, 0), rotation: new THREE.Euler(0, 0, -Math.PI / 2), index: 1 },
+                { normal: new THREE.Vector3(0, 1, 0), rotation: new THREE.Euler(0, 0, 0), index: 2 },
+                { normal: new THREE.Vector3(0, -1, 0), rotation: new THREE.Euler(Math.PI, 0, 0), index: 3 },
+                { normal: new THREE.Vector3(0, 0, 1), rotation: new THREE.Euler(Math.PI / 2, 0, 0), index: 4 },
+                { normal: new THREE.Vector3(0, 0, -1), rotation: new THREE.Euler(-Math.PI / 2, 0, 0), index: 5 }
+            ];
+            
+            let maxDot = -Infinity;
+            let topFaceData = null;
+            
+            // Find which face normal is most aligned with the UP vector (pointing up, away from floor)
+            faces.forEach(face => {
+                const worldNormal = face.normal.clone();
+                worldNormal.applyQuaternion(dice.quaternion);
+                const dot = worldNormal.dot(upVector);
+                if (dot > maxDot) {
+                    maxDot = dot;
+                    topFaceData = face;
+                }
+            });
+            
+            if (topFaceData) {
+                dice.rotation.copy(topFaceData.rotation);
+            }
+            
+            // Clear timeout
+            if (rollingTimeout) {
+                clearTimeout(rollingTimeout);
+                rollingTimeout = null;
+            }
+            
+            showResult();
+        }
+
+        function showResult() {
+            // Find which face is up
+            const faces = [
+                { normal: new THREE.Vector3(1, 0, 0), index: 0 },
+                { normal: new THREE.Vector3(-1, 0, 0), index: 1 },
+                { normal: new THREE.Vector3(0, 1, 0), index: 2 },
+                { normal: new THREE.Vector3(0, -1, 0), index: 3 },
+                { normal: new THREE.Vector3(0, 0, 1), index: 4 },
+                { normal: new THREE.Vector3(0, 0, -1), index: 5 }
+            ];
+            
+            const upVector = new THREE.Vector3(0, 1, 0);
+            let maxDot = -Infinity;
+            let topFace = 0;
+            
+            faces.forEach(face => {
+                const worldNormal = face.normal.clone();
+                worldNormal.applyQuaternion(dice.quaternion);
+                const dot = worldNormal.dot(upVector);
+                if (dot > maxDot) {
+                    maxDot = dot;
+                    topFace = face.index;
+                }
+            });
+
+            const result = dice.userData.faceTexts ? dice.userData.faceTexts[topFace] : `Option ${topFace + 1}`;
+            document.getElementById('resultChoice').textContent = result;
+            document.getElementById('result').style.display = 'block';
+            showingResult = true;
+            
+            // Text-to-speech
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(`You should ${result}`);
+                utterance.rate = 0.9;
+                utterance.pitch = 1.0;
+                utterance.volume = 1.0;
+                window.speechSynthesis.cancel(); // Cancel any ongoing speech
+                window.speechSynthesis.speak(utterance);
+            }
+            
+            updateStatus('Point to roll again!', 'ready');
+            updateDebug();
+        }
+
+        function closeResult() {
+            document.getElementById('result').style.display = 'none';
+            dice.position.set(0, 0, 0);
+            dice.rotation.set(0.2, 0.3, 0.1);
+            isRolling = false;
+            isDiceGrabbed = false;
+            showingResult = false;
+            window.speechSynthesis.cancel(); // Stop any speech
+            
+            // Clear any rolling timeout
+            if (rollingTimeout) {
+                clearTimeout(rollingTimeout);
+                rollingTimeout = null;
+            }
+            
+            updateStatus('Ready!', 'ready');
+            updateDebug();
+        }
+
+        // Hand tracking with MediaPipe
+        async function initHandTracking() {
+            const videoElement = document.getElementById('videoElement');
+            
+            // Wait for scripts to load
+            await new Promise((resolve) => {
+                if (typeof Hands !== 'undefined' && typeof Camera !== 'undefined') {
+                    resolve();
+                } else {
+                    const checkInterval = setInterval(() => {
+                        if (typeof Hands !== 'undefined' && typeof Camera !== 'undefined') {
+                            clearInterval(checkInterval);
+                            resolve();
+                        }
+                    }, 100);
+                }
+            });
+
+            handsInstance = new Hands({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+            });
+
+            handsInstance.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.7,
+                minTrackingConfidence: 0.7
+            });
+
+            handsInstance.onResults(onHandResults);
+
+            const cameraInstance = new Camera(videoElement, {
+                onFrame: async () => {
+                    await handsInstance.send({ image: videoElement });
+                },
+                width: 1280,
+                height: 720
+            });
+
+            await cameraInstance.start();
+            updateStatus('Ready! Show your hand', 'ready');
+        }
+
+        function onHandResults(results) {
+            const handPoint = document.getElementById('handPoint');
+            
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                handDetected = true;
+                const landmarks = results.multiHandLandmarks[0];
+                
+                // Update hand position (wrist)
+                lastHandPosition = { ...handPosition };
+                handPosition.x = landmarks[0].x;
+                handPosition.y = landmarks[0].y;
+                handPosition.z = landmarks[0].z;
+                
+                // Calculate velocity
+                handVelocity.x = handPosition.x - lastHandPosition.x;
+                handVelocity.y = handPosition.y - lastHandPosition.y;
+                handVelocity.z = handPosition.z - lastHandPosition.z;
+                
+                // Show hand indicator at index finger tip
+                const indexTip = landmarks[8];
+                handPoint.style.display = 'block';
+                handPoint.style.left = (indexTip.x * window.innerWidth) + 'px';
+                handPoint.style.top = (indexTip.y * window.innerHeight) + 'px';
+
+                // Detect if hand is closed (grabbing)
+                const palmBase = landmarks[0];
+                const indexTipPos = landmarks[8];
+                const middleTip = landmarks[12];
+                const ringTip = landmarks[16];
+                const pinkyTip = landmarks[20];
+                
+                // Calculate distances from palm
+                const indexDist = Math.hypot(indexTipPos.x - palmBase.x, indexTipPos.y - palmBase.y);
+                const middleDist = Math.hypot(middleTip.x - palmBase.x, middleTip.y - palmBase.y);
+                const ringDist = Math.hypot(ringTip.x - palmBase.x, ringTip.y - palmBase.y);
+                const pinkyDist = Math.hypot(pinkyTip.x - palmBase.x, pinkyTip.y - palmBase.y);
+                
+                const avgDist = (indexDist + middleDist + ringDist + pinkyDist) / 4;
+                
+                // Detect pointing gesture (index finger extended, others closed)
+                const indexExtended = indexDist > 0.15;
+                const othersCollapsed = (middleDist < 0.12 && ringDist < 0.12 && pinkyDist < 0.12);
+                const nowPointing = indexExtended && othersCollapsed;
+                
+                // Handle pointing gesture when result is showing
+                if (showingResult && nowPointing) {
+                    if (!isPointing) {
+                        // Just started pointing
+                        isPointing = true;
+                        pointingStartTime = Date.now();
+                        handPoint.style.background = '#ffc107';
+                        handPoint.style.width = '25px';
+                        handPoint.style.height = '25px';
+                    } else {
+                        // Still pointing - check duration
+                        const pointingDuration = (Date.now() - pointingStartTime) / 1000;
+                        if (pointingDuration >= 0.3) {
+                            // Held for 0.3 seconds - roll again!
+                            closeResult();
+                            isPointing = false;
+                            handPoint.style.background = '#4ecdc4';
+                            handPoint.style.width = '20px';
+                            handPoint.style.height = '20px';
+                        } else {
+                            // Show progress by growing the indicator
+                            const progress = pointingDuration / 0.3;
+                            const size = 25 + (progress * 15);
+                            handPoint.style.width = size + 'px';
+                            handPoint.style.height = size + 'px';
+                        }
+                    }
+                } else {
+                    isPointing = false;
+                    handPoint.style.width = '20px';
+                    handPoint.style.height = '20px';
+                    
+                    // Normal grab/throw logic when not showing result
+                    if (!showingResult) {
+                        wasGrabbing = isGrabbing;
+                        isGrabbing = avgDist < 0.15; // Threshold for closed hand
+                        
+                        if (isGrabbing) {
+                            handPoint.classList.add('grabbing');
+                            if (!wasGrabbing && !isRolling) {
+                                // Just grabbed
+                                isDiceGrabbed = true;
+                                updateStatus('Holding dice!', 'grabbing');
+                            }
+                        } else {
+                            handPoint.classList.remove('grabbing');
+                            if (wasGrabbing && isDiceGrabbed && !isRolling) {
+                                // Just released - throw!
+                                throwDice();
+                            }
+                        }
+                    }
+                }
+                
+                updateDebug();
+            } else {
+                handDetected = false;
+                handPoint.style.display = 'none';
+                isPointing = false;
+                if (isDiceGrabbed && !isRolling) {
+                    isDiceGrabbed = false;
+                    updateStatus('Hand lost - show hand again', 'ready');
+                }
+                updateDebug();
+            }
+        }
+
+        function updateStatus(text, className) {
+            const status = document.getElementById('status');
+            status.textContent = text;
+            status.className = 'status ' + className;
+        }
+
+        function updateDebug() {
+            document.getElementById('handStatus').textContent = handDetected ? 'Detected' : 'None';
+            document.getElementById('grabStatus').textContent = isGrabbing ? 'YES' : 'No';
+            document.getElementById('diceStatus').textContent = isRolling ? 'Rolling' : isDiceGrabbed ? 'Grabbed' : 'Idle';
+            const validOptions = options.filter((opt, i) => opt !== `Option ${i + 1}`);
+            document.getElementById('optionCount').textContent = validOptions.length;
+        }
+
+        // Options management
+        function addOption() {
+            const input = document.getElementById('optionInput');
+            const option = input.value.trim();
+            
+            if (!option) {
+                return;
+            }
+            
+            // Find first empty slot
+            let slotIndex = -1;
+            for (let i = 0; i < 6; i++) {
+                if (options[i] === `Option ${i + 1}`) {
+                    slotIndex = i;
+                    break;
+                }
+            }
+            
+            if (slotIndex === -1) {
+                alert('Maximum 6 options (one per dice face)');
+                return;
+            }
+            
+            options[slotIndex] = option;
+            input.value = '';
+            updateOptionsList();
+            createDice();
+        }
+
+        function removeOption(index) {
+            options[index] = `Option ${index + 1}`;
+            updateOptionsList();
+            createDice();
+        }
+
+        function updateOptionsList() {
+            const list = document.getElementById('optionsList');
+            
+            const validOptions = [];
+            options.forEach((opt, i) => {
+                if (opt !== `Option ${i + 1}`) {
+                    validOptions.push({ text: opt, index: i });
+                }
+            });
+            
+            if (validOptions.length === 0) {
+                list.innerHTML = '<div style="color: #888; font-size: 0.8em; margin-top: 10px;">Add your options...</div>';
+                return;
+            }
+
+            list.innerHTML = validOptions.map(option => `
+                <div class="option-item">
+                    <span>${option.text}</span>
+                    <button class="remove-btn" data-index="${option.index}">✕</button>
+                </div>
+            `).join('');
+            
+            // Add event listeners to remove buttons
+            list.querySelectorAll('.remove-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    removeOption(parseInt(btn.dataset.index));
+                });
+            });
+            
+            updateDebug();
+        }
+
+        // Initialize everything
+        window.addEventListener('load', async () => {
+            updateOptionsList();
+            initThreeJS();
+            
+            // Setup button handlers
+            document.getElementById('addBtn').addEventListener('click', addOption);
+            document.getElementById('closeBtn').addEventListener('click', closeResult);
+            document.getElementById('optionInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addOption();
+            });
+            
+            try {
+                await initHandTracking();
+            } catch (error) {
+                updateStatus('Camera error: ' + error.message, 'error');
+                console.error(error);
+            }
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

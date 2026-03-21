@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Muse EEG Viewer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧠 Muse EEG Monitor</h1>
+            <p>Real-time brainwave visualization</p>
+        </header>
+
+        <div class="connect-section">
+            <button id="connectBtn" class="btn-primary">
+                Connect Muse Device
+            </button>
+            <div id="status" class="status">Not connected</div>
+        </div>
+
+        <div id="dataPanel" class="data-panel" style="display: none;">
+            <!-- Voltage Display -->
+            <div class="voltage-panel">
+                <h3>Total Voltage</h3>
+                <div class="voltage-display">
+                    <span id="voltageValue">0</span>
+                    <span class="unit">µV</span>
+                </div>
+            </div>
+
+            <!-- Channel Labels -->
+            <div class="channels-info">
+                <div class="channel-label">
+                    <span class="channel-dot" style="background: #ff6b6b;"></span>
+                    <span>TP9 (Left Ear)</span>
+                </div>
+                <div class="channel-label">
+                    <span class="channel-dot" style="background: #4ecdc4;"></span>
+                    <span>AF7 (Left Forehead)</span>
+                </div>
+                <div class="channel-label">
+                    <span class="channel-dot" style="background: #45b7d1;"></span>
+                    <span>AF8 (Right Forehead)</span>
+                </div>
+                <div class="channel-label">
+                    <span class="channel-dot" style="background: #f7b731;"></span>
+                    <span>TP10 (Right Ear)</span>
+                </div>
+            </div>
+
+            <!-- EEG Graphs -->
+            <div class="graphs-container">
+                <div class="graph-card">
+                    <h4>TP9 - Left Ear</h4>
+                    <canvas id="graph0" width="800" height="150"></canvas>
+                </div>
+                <div class="graph-card">
+                    <h4>AF7 - Left Forehead</h4>
+                    <canvas id="graph1" width="800" height="150"></canvas>
+                </div>
+                <div class="graph-card">
+                    <h4>AF8 - Right Forehead</h4>
+                    <canvas id="graph2" width="800" height="150"></canvas>
+                </div>
+                <div class="graph-card">
+                    <h4>TP10 - Right Ear</h4>
+                    <canvas id="graph3" width="800" height="150"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>

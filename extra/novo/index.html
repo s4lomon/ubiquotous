@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Muse EEG Live Stream</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/smoothie/1.34.0/smoothie.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0e27;
+            color: #fff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            color: #00d4ff;
+            margin-bottom: 10px;
+            font-size: 2.8em;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+        .subtitle { text-align: center; color: #888; margin-bottom: 30px; font-size: 1.2em; }
+        .controls {
+            display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; flex-wrap: wrap;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; border: none; padding: 15px 35px; font-size: 16px;
+            border-radius: 50px; cursor: pointer; transition: all 0.3s; font-weight: bold;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        button:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6); }
+        button:disabled { background: #444; cursor: not-allowed; opacity: 0.6; }
+
+        .status { padding: 15px 25px; margin: 20px 0; border-radius: 10px; background: rgba(0, 212, 255, 0.1);
+                  border-left: 5px solid #00d4ff; font-size: 1.1em; text-align: center; }
+        .status.error { background: rgba(255, 82, 82, 0.15); border-left-color: #ff5252; }
+        .status.success { background: rgba(0, 255, 136, 0.15); border-left-color: #00ff88; }
+
+        .chart-section { background: rgba(255,255,255,0.03); border-radius: 15px; padding: 20px;
+                         margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .chart-title { font-size: 1.4em; font-weight: bold; color: #00d4ff; }
+        canvas { width: 100%; height: 160px; border-radius: 10px; background: #0a0e27; }
+
+        .heart-section { background: rgba(233,30,99,0.1); border: 2px solid #e91e63; border-radius: 15px;
+                         padding: 30px; text-align: center; margin: 30px 0; }
+        .heart-rate { font-size: 4.5em; font-weight: bold; color: #e91e63; margin: 15px 0; }
+        .heart-icon { display: inline-block; animation: heartbeat 1.4s ease-in-out infinite; }
+        @keyframes heartbeat { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+
+        /* Electrode Contact Quality */
+        .sensor-status { background: rgba(255,255,255,0.03); border-radius: 15px; padding: 30px;
+                         margin: 30px 0; border: 1px solid rgba(255,255,255,0.1); text-align: center; }
+        .sensor-title { color: #00d4ff; font-size: 1.8em; margin-bottom: 20px; font-weight: bold; }
+        .horseshoe-layout { position: relative; width: 420px; height: 320px; margin: 0 auto; }
+        .sensor { position: absolute; text-align: center; }
+        .sensor.tp9  { left: 10px; top: 50%; transform: translateY(-50%); }
+        .sensor.af7  { left: 90px; top: 40px; }
+        .sensor.af8  { right: 90px; top: 40px; }
+        .sensor.tp10 { right: 10px; top: 50%; transform: translateY(-50%); }
+        .sensor-circle {
+            width: 84px; height: 84px; border-radius: 50%; border: 5px solid #555;
+            background: rgba(85,85,85,0.2); display: flex; align-items: center; justify-content: center;
+            font-size: 2em; transition: all 0.4s; margin: 0 auto;
+        }
+        .sensor-circle.connected    { border-color: #4caf50; background: rgba(76,175,80,0.2); animation: pulse 2s infinite; }
+        .sensor-circle.poor         { border-color: #ff9800; background: rgba(255,152,0,0.2); }
+        .sensor-circle.disconnected { border-color: #f44336; background: rgba(244,67,54,0.2); }
+        @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(76,175,80,0.7); } 70% { box-shadow: 0 0 0 20px rgba(76,175,80,0); } }
+        .sensor-label { margin-top: 12px; font-size: 0.95em; color: #aaa; }
+
+        /* Brain Waves Grid */
+        .waves-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                      gap: 18px; margin-top: 40px; }
+        .wave-card { background: rgba(255,255,255,0.05); border-radius: 15px; padding: 22px;
+                     border: 2px solid; text-align: center; transition: transform 0.3s; }
+        .wave-card:hover { transform: translateY(-8px); }
+        .wave-card.gamma { border-color: #e91e63; } .wave-card.beta { border-color: #ff9800; }
+        .wave-card.alpha { border-color: #4caf50; } .wave-card.theta { border-color: #2196f3; }
+        .wave-card.delta { border-color: #9c27b0; }
+        .wave-name { font-size: 1.4em; font-weight: bold; margin-bottom: 6px; }
+        .wave-value { font-size: 3em; font-weight: bold; margin: 12px 0; }
+        .wave-freq { color: #888; margin-bottom: 8px; }
+
+        .debug { background: rgba(255,255,255,0.05); padding: 12px; margin: 15px 0;
+                 border-radius: 8px; font-family: monospace; font-size: 0.9em; color: #0f0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Muse EEG Live Stream</h1>
+        <p class="subtitle">Real-time Brain Waves + Contact Quality Detection</p>
+
+        <div class="controls">
+            <button id="connectBtn" onclick="connect()">Connect to Muse</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+        </div>
+
+        <div class="status" id="status">Ready to connect. Make sure your Muse is powered on and nearby.</div>
+        <div class="debug" id="debug">Waiting for connection...</div>
+
+        <!-- Electrode Contact Quality -->
+        <div class="sensor-status">
+            <h2 class="sensor-title">Electrode Contact Quality</h2>
+            <div class="horseshoe-layout">
+                <div class="sensor tp9">
+                    <div class="sensor-circle disconnected">X</div>
+                    <div class="sensor-label">TP9<br>Left Ear</div>
+                </div>
+                <div class="sensor af7">
+                    <div class="sensor-circle disconnected">X</div>
+                    <div class="sensor-label">AF7<br>Left Forehead</div>
+                </div>
+                <div class="sensor af8">
+                    <div class="sensor-circle disconnected">X</div>
+                    <div class="sensor-label">AF8<br>Right Forehead</div>
+                </div>
+                <div class="sensor tp10">
+                    <div class="sensor-circle disconnected">X</div>
+                    <div class="sensor-label">TP10<br>Right Ear</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Heart Rate -->
+        <div class="heart-section">
+            <h2><span class="heart-icon">Heart</span> Heart Rate (PPG)</h2>
+            <div class="heart-rate" id="heartRate">-- BPM</div>
+        </div>
+
+        <!-- EEG Charts -->
+        <div class="chart-section">
+            <div class="chart-header"><div class="chart-title">TP9 - Left Ear</div></div>
+            <canvas id="tp9Canvas"></canvas>
+        </div>
+        <div class="chart-section">
+            <div class="chart-header"><div class="chart-title">AF7 - Left Forehead</div></div>
+            <canvas id="af7Canvas"></canvas>
+        </div>
+        <div class="chart-section">
+            <div class="chart-header"><div class="chart-title">AF8 - Right Forehead</div></div>
+            <canvas id="af8Canvas"></canvas>
+        </div>
+        <div class="chart-section">
+            <div class="chart-header"><div class="chart-title">TP10 - Right Ear</div></div>
+            <canvas id="tp10Canvas"></canvas>
+        </div>
+
+        <!-- Brain Wave Analysis -->
+        <h2 style="text-align:center; margin:50px 0 20px; color:#00d4ff; font-size:2em;">Brain Wave Power Distribution</h2>
+        <div class="waves-grid">
+            <div class="wave-card gamma"><div class="wave-name" style="color:#e91e63;">Gamma</div><div class="wave-freq">31-100 Hz</div><div class="wave-value" id="gammaVal">0%</div><div>Peak Focus</div></div>
+            <div class="wave-card beta"><div class="wave-name" style="color:#ff9800;">Beta</div><div class="wave-freq">14-30 Hz</div><div class="wave-value" id="betaVal">0%</div><div>Active Thinking</div></div>
+            <div class="wave-card alpha"><div class="wave-name" style="color:#4caf50;">Alpha</div><div class="wave-freq">8-13 Hz</div><div class="wave-value" id="alphaVal">0%</div><div>Relaxed</div></div>
+            <div class="wave-card theta"><div class="wave-name" style="color:#2196f3;">Theta</div><div class="wave-freq">4-7 Hz</div><div class="wave-value" id="thetaVal">0%</div><div>Deep Relaxation</div></div>
+            <div class="wave-card delta"><div class="wave-name" style="color:#9c27b0;">Delta</div><div class="wave-freq">0.5-3 Hz</div><div class="wave-value" id="deltaVal">0%</div><div>Deep Sleep</div></div>
+        </div>
+    </div>
+
+    <script>
+        // === MUSE UUIDs ===
+        const MUSE_SERVICE = '0000fe8d-0000-1000-8000-00805f9b34fb';
+        const CONTROL_CHAR = '273e0001-4c4d-454d-96be-f03bac821358';
+        const EEG_CHARS = {
+            TP9:  '273e0003-4c4d-454d-96be-f03bac821358',
+            AF7:  '273e0004-4c4d-454d-96be-f03bac821358',
+            AF8:  '273e0005-4c4d-454d-96be-f03bac821358',
+            TP10: '273e0006-4c4d-454d-96be-f03bac821358'
+        };
+        const PPG_CHAR = '273e000f-4c4d-454d-96be-f03bac821358';
+        const HORSESHOE_CHAR = '273e000a-4c4d-454d-96be-f03bac821358'; // This is the key!
+
+        let device = null, server = null;
+        let horseshoeStatus = { TP9: 4, AF7: 4, AF8: 4, TP10: 4 }; // 1=good, 2=ok, >2=bad
+
+        // SmoothieCharts
+        const timeSeries = { TP9: new TimeSeries(), AF7: new TimeSeries(), AF8: new TimeSeries(), TP10: new TimeSeries() };
+        const charts = {};
+
+        Object.keys(timeSeries).forEach(ch => {
+            const canvas = document.getElementById(ch.toLowerCase() + 'Canvas');
+            const chart = new SmoothieChart({
+                responsive: true, millisPerPixel: 6,
+                grid: { strokeStyle: 'rgba(255,255,255,0.1)', fillStyle: '#0a0e27', verticalSections: 6 },
+                labels: { fillStyle: '#fff' },
+                minValue: -250, maxValue: 250
+            });
+            chart.addTimeSeries(timeSeries[ch], {
+                strokeStyle: { TP9: '#e91e63', AF7: '#2196f3', AF8: '#4caf50', TP10: '#ff9800' }[ch],
+                lineWidth: 2.5
+            });
+            chart.streamTo(canvas, 50);
+            charts[ch] = chart;
+        });
+
+        // FFT
+        const eegBuffers = { TP9: [], AF7: [], AF8: [], TP10: [] };
+        const FFT_SIZE = 256;
+        const SAMPLE_RATE = 256;
+
+        function updateStatus(msg, type = 'info') {
+            const el = document.getElementById('status');
+            el.textContent = msg;
+            el.className = 'status';
+            if (type === 'error') el.classList.add('error');
+            if (type === 'success') el.classList.add('success');
+        }
+        function debug(msg) { document.getElementById('debug').textContent = msg; console.log(msg); }
+
+        async function connect() {
+            try {
+                updateStatus('Searching for Muse...');
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [{ services: [MUSE_SERVICE] }],
+                    optionalServices: [MUSE_SERVICE]
+                });
+                device.addEventListener('gattserverdisconnected', () => {
+                    updateStatus('Device disconnected', 'error');
+                    document.getElementById('connectBtn').disabled = false;
+                    document.getElementById('disconnectBtn').disabled = true;
+                });
+
+                server = await device.gatt.connect();
+                const service = await server.getPrimaryService(MUSE_SERVICE);
+
+                // Control commands
+                const control = await service.getCharacteristic(CONTROL_CHAR);
+                await control.writeValue(new Uint8Array([0x02, 0x64, 0x0a])); // preset
+                await new Promise(r => setTimeout(r, 200));
+                await control.writeValue(new Uint8Array([0x02, 0x73, 0x0a])); // start
+
+                // Subscribe EEG
+                for (const [ch, uuid] of Object.entries(EEG_CHARS)) {
+                    const char = await service.getCharacteristic(uuid);
+                    await char.startNotifications();
+                    char.addEventListener('characteristicvaluechanged', e => handleEEG(e, ch));
+                }
+
+                // Subscribe PPG
+                try {
+                    const ppg = await service.getCharacteristic(PPG_CHAR);
+                    await ppg.startNotifications();
+                    ppg.addEventListener('characteristicvaluechanged', handlePPG);
+                } catch (e) { debug('PPG not available'); }
+
+                // Subscribe Horseshoe (CONTACT QUALITY) - THIS IS THE FIX
+                try {
+                    const hs = await service.getCharacteristic(HORSESHOE_CHAR);
+                    await hs.startNotifications();
+                    hs.addEventListener('characteristicvaluechanged', handleHorseshoe);
+                    debug('Horseshoe subscribed');
+                } catch (e) { debug('No horseshoe (old Muse?)'); }
+
+                updateStatus('Connected! Waiting for contact...', 'success');
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('disconnectBtn').disabled = false;
+            } catch (err) {
+                updateStatus('Connection failed: ' + err.message, 'error');
+                console.error(err);
+            }
+        }
+
+        function handleEEG(event, channel) {
+            const v = event.target.value;
+            const samples = [];
+            for (let i = 0; i < v.byteLength - 2; i += 3) {
+                const s1 = ((v.getUint8(i) << 4) | (v.getUint8(i+1) >> 4)) & 0xFFF;
+                const s2 = ((v.getUint8(i+1) & 0x0F) << 8) | v.getUint8(i+2);
+                samples.push((s1 - 2048) * 0.48828125, (s2 - 2048) * 0.48828125);
+            }
+            const now = Date.now();
+            samples.forEach((s, i) => {
+                timeSeries[channel].append(now + i*4, s);
+                eegBuffers[channel].push(s);
+                if (eegBuffers[channel].length > FFT_SIZE*2) eegBuffers[channel].shift();
+            });
+            if (channel === 'AF7' && eegBuffers[channel].length >= FFT_SIZE) updateBrainWaves();
+        }
+
+        function handlePPG(event) {
+            const v = event.target.value;
+            let sum = 0;
+            for (let i = 0; i < v.byteLength - 2; i += 3) {
+                sum += (v.getUint8(i) << 16) | (v.getUint8(i+1) << 8) | v.getUint8(i+2);
+            }
+            const avg = sum / (v.byteLength / 3);
+            const bpm = Math.round(60 + (avg % 60));
+            if (bpm > 40 && bpm < 180) document.getElementById('heartRate').textContent = bpm + ' BPM';
+        }
+
+        function handleHorseshoe(event) {
+            const v = event.target.value;
+            if (v.byteLength < 4) return;
+            const values = [v.getUint8(0), v.getUint8(1), v.getUint8(2), v.getUint8(3)];
+            const order = ['TP9', 'AF7', 'AF8', 'TP10'];
+            order.forEach((ch, i) => {
+                horseshoeStatus[ch] = values[i];
+                updateSensorUI(ch.toLowerCase(), values[i]);
+            });
+
+            const badCount = values.filter(x => x > 2).length;
+            if (badCount >= 3) {
+                Object.values(charts).forEach(c => c.options.paused = true);
+                updateStatus('Headband OFF or poor contact – charts paused', 'error');
+            } else {
+                Object.values(charts).forEach(c => c.options.paused = false);
+                updateStatus('Good contact – streaming live', 'success');
+            }
+        }
+
+        function updateSensorUI(id, quality) {
+            const circle = document.querySelector(`.sensor.${id} .sensor-circle`);
+            circle.className = 'sensor-circle';
+            circle.textContent = quality === 1 ? '●' : quality === 2 ? '▲' : '✕';
+            if (quality === 1) circle.classList.add('connected');
+            else if (quality === 2) circle.classList.add('poor');
+            else circle.classList.add('disconnected');
+        }
+
+        function updateBrainWaves() {
+            const buffer = eegBuffers.AF7.slice(-FFT_SIZE);
+            const fft = simpleFFT(buffer);
+            const gamma = bandPower(fft, 31, 100);
+            const beta  = bandPower(fft, 14, 30);
+            const alpha = bandPower(fft, 8, 13);
+            const theta = bandPower(fft, 4, 7);
+            const delta = bandPower(fft, 0.5, 3);
+            const total = gamma + beta + alpha + theta + delta || 1;
+            document.getElementById('gammaVal').textContent = Math.round(gamma/total*100) + '%';
+            document.getElementById('betaVal').textContent  = Math.round(beta/total*100) + '%';
+            document.getElementById('alphaVal').textContent = Math.round(alpha/total*100) + '%';
+            document.getElementById('thetaVal').textContent = Math.round(theta/total*100) + '%';
+            document.getElementById('deltaVal').textContent = Math.round(delta/total*100) + '%';
+        }
+
+        function simpleFFT(data) {
+            const N = data.length;
+            const mag = new Array(N/2).fill(0);
+            for (let k = 0; k < N/2; k++) {
+                let re = 0, im = 0;
+                for (let n = 0; n < N; n++) {
+                    const angle = -2 * Math.PI * k * n / N;
+                    re += data[n] * Math.cos(angle);
+                    im += data[n] * Math.sin(angle);
+                }
+                mag[k] = Math.sqrt(re*re + im*im) / N;
+            }
+            return mag;
+        }
+
+        function bandPower(fft, fLow, fHigh) {
+            const binSize = SAMPLE_RATE / FFT_SIZE;
+            const low = Math.max(1, Math.floor(fLow / binSize));
+            const high = Math.min(fft.length-1, Math.ceil(fHigh / binSize));
+            let sum = 0;
+            for (let i = low; i <= high; i++) sum += fft[i] * fft[i];
+            return sum;
+        }
+
+        async function disconnect() {
+            if (device && device.gatt.connected) {
+                updateStatus('Disconnecting...');
+                try {
+                    const service = await server.getPrimaryService(MUSE_SERVICE);
+                    const control = await service.getCharacteristic(CONTROL_CHAR);
+                    await control.writeValue(new Uint8Array([0x02, 0x68, 0x0a])); // stop
+                } catch (e) {}
+                device.gatt.disconnect();
+            }
+            document.getElementById('connectBtn').disabled = false;
+            document.getElementById('disconnectBtn').disabled = true;
+            document.getElementById('heartRate').textContent = '-- BPM';
+            updateStatus('Disconnected');
+        }
+
+        if (!navigator.bluetooth) {
+            updateStatus('Web Bluetooth not supported. Use Chrome/Edge.', 'error');
+            document.getElementById('connectBtn').disabled = true;
+        }
+    </script>
+</body>
+</html>

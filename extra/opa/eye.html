@@ -1,0 +1,1502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hand Tracking + MI Dice</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-black p-8">
+    <div class="max-w-7xl mx-auto">
+        
+        <!-- Header -->
+        <div class="text-center mb-6">
+            <h1 class="text-4xl font-bold text-white mb-2">Hand-Controlled Mind Dice</h1>
+            <p class="text-gray-400">Point finger 0.5s to select • Left eye = spin • Right eye = flash red</p>
+            <p id="statusText" class="text-sm text-gray-500 mt-2">Ready</p>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex justify-center gap-3 mb-6 flex-wrap">
+            <button id="startHand" onclick="startHandTracking()" 
+                class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-all">
+                ✋ Start Hand Tracking
+            </button>
+            <button id="connectBtn" onclick="connectMuse()" 
+                class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-all">
+                🔗 Connect Muse
+            </button>
+            <button id="toggleWaves" onclick="toggleWaveVisibility()" 
+                class="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-lg transition-all">
+                👁️ Hide Waves
+            </button>
+            <button id="fakeDataBtn" onclick="toggleFakeData()" 
+                class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg transition-all">
+                🎭 Demo Mode
+            </button>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="flex justify-center gap-8 mb-8">
+            <div class="flex items-center gap-2">
+                <div id="handIndicator" class="w-3 h-3 rounded-full bg-gray-500"></div>
+                <span class="text-gray-400 text-sm" id="trackingMode">Mouse</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div id="museIndicator" class="w-3 h-3 rounded-full bg-red-500"></div>
+                <span class="text-gray-400 text-sm">Muse</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div id="signalQuality" class="w-3 h-3 rounded-full bg-gray-500"></div>
+                <span class="text-gray-400 text-sm">Signal: <span id="signalText">--</span></span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-gray-400 text-sm">Blinks: <span id="totalBlinks" class="text-white font-bold">0</span></span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-gray-400 text-sm">Spins: <span id="totalSpins" class="text-white font-bold">0</span></span>
+            </div>
+        </div>
+
+        <!-- Hand Tracking Preview -->
+        <div id="handContainer" class="mb-8 bg-gray-900 rounded-lg p-4 border border-gray-800 hidden">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-lg font-semibold text-white">Hand Tracking View</h3>
+                <div class="text-sm text-gray-400">
+                    Speed: <span id="handSpeed" class="text-white">0</span> px/s
+                </div>
+            </div>
+            <div class="relative max-w-md mx-auto">
+                <video id="webcam" autoplay playsinline class="w-full rounded-lg"></video>
+                <canvas id="handCanvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+            </div>
+            <div class="mt-2 flex justify-between text-xs text-gray-400">
+                <span>Point with your index finger</span>
+                <span id="handStatus" class="text-green-400">Hand detected ✓</span>
+            </div>
+        </div>
+
+        <!-- Main Game Canvas -->
+        <div class="mb-8">
+            <canvas id="gameCanvas" width="1200" height="700" class="w-full rounded-lg border border-gray-800"></canvas>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- 4-Channel EEG Streams (spans 2 columns) -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800 lg:col-span-2">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-white">📊 Live EEG Streams</h2>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm text-gray-400">Amplitude:</label>
+                            <input type="range" id="amplitudeSlider" min="5" max="1500" value="1500" 
+                                class="w-32" oninput="updateAmplitudeScale()">
+                            <span id="amplitudeValue" class="text-white text-sm w-16">1500µV</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm text-gray-400">Filter:</label>
+                            <input type="range" id="filterSlider" min="0" max="10" value="5" 
+                                class="w-32" oninput="updateFilterStrength()">
+                            <span id="filterValue" class="text-white text-sm w-12">5</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm text-gray-400">Time:</label>
+                            <select id="timeScaleSelect" onchange="updateTimeScale()" class="bg-gray-800 text-white px-2 py-1 rounded border border-gray-700 text-sm">
+                                <option value="2">2s</option>
+                                <option value="4">4s</option>
+                                <option value="8" selected>8s</option>
+                                <option value="16">16s</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- TP9 Channel -->
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <div class="flex items-center gap-2">
+                            <div id="tp9-led" class="w-2 h-2 rounded-full bg-gray-700"></div>
+                            <span class="text-sm font-semibold text-purple-400">TP9 (Left Ear)</span>
+                        </div>
+                        <span class="text-xs text-gray-500">Current: <span id="tp9-current" class="text-purple-400">0.0µV</span></span>
+                    </div>
+                    <canvas id="tp9Canvas" width="1000" height="100" class="w-full rounded bg-black"></canvas>
+                </div>
+
+                <!-- AF7 Channel -->
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <div class="flex items-center gap-2">
+                            <div id="af7-led" class="w-2 h-2 rounded-full bg-gray-700"></div>
+                            <span class="text-sm font-semibold text-green-400">AF7 (Left Front) - Left Eye</span>
+                        </div>
+                        <span class="text-xs text-gray-500">Current: <span id="af7-current" class="text-green-400">0.0µV</span></span>
+                    </div>
+                    <canvas id="af7Canvas" width="1000" height="100" class="w-full rounded bg-black"></canvas>
+                </div>
+
+                <!-- AF8 Channel -->
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <div class="flex items-center gap-2">
+                            <div id="af8-led" class="w-2 h-2 rounded-full bg-gray-700"></div>
+                            <span class="text-sm font-semibold text-blue-400">AF8 (Right Front) - Right Eye ⚡</span>
+                        </div>
+                        <span class="text-xs text-gray-500">Current: <span id="af8-current" class="text-blue-400">0.0µV</span></span>
+                    </div>
+                    <canvas id="af8Canvas" width="1000" height="100" class="w-full rounded bg-black"></canvas>
+                </div>
+
+                <!-- TP10 Channel -->
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <div class="flex items-center gap-2">
+                            <div id="tp10-led" class="w-2 h-2 rounded-full bg-gray-700"></div>
+                            <span class="text-sm font-semibold text-orange-400">TP10 (Right Ear)</span>
+                        </div>
+                        <span class="text-xs text-gray-500">Current: <span id="tp10-current" class="text-orange-400">0.0µV</span></span>
+                    </div>
+                    <canvas id="tp10Canvas" width="1000" height="100" class="w-full rounded bg-black"></canvas>
+                </div>
+
+                <div class="mt-3 p-3 bg-black rounded">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="text-sm text-gray-400 mb-1">Signal Quality</div>
+                            <div class="w-64 bg-gray-800 rounded-full h-2">
+                                <div id="qualityBar" class="bg-green-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            <span>🟢 LEFT eye (AF7) → Spin dice | 🔴 RIGHT eye (AF8) → Flash red 1s</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Brain Waves (Collapsible) -->
+            <div id="wavesPanel" class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <h2 class="text-xl font-semibold text-white mb-4">🧠 Brain Waves</h2>
+                <div class="space-y-3">
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-400">Alpha (Relax)</span>
+                            <span id="alphaValue" class="text-green-400">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-800 rounded-full h-2">
+                            <div id="alphaBar" class="bg-green-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-400">Beta (Focus)</span>
+                            <span id="betaValue" class="text-blue-400">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-800 rounded-full h-2">
+                            <div id="betaBar" class="bg-blue-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-400">Theta</span>
+                            <span id="thetaValue" class="text-purple-400">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-800 rounded-full h-2">
+                            <div id="thetaBar" class="bg-purple-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-400">Delta</span>
+                            <span id="deltaValue" class="text-red-400">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-800 rounded-full h-2">
+                            <div id="deltaBar" class="bg-red-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EEG Channels -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <h2 class="text-xl font-semibold text-white mb-4">📡 EEG Channels</h2>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div class="bg-black p-3 rounded">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div id="tp9-status" class="w-2 h-2 rounded-full bg-gray-700"></div>
+                            <span class="text-white font-semibold">TP9</span>
+                        </div>
+                        <div class="text-xs text-gray-500">Left Ear</div>
+                        <div class="text-xs text-gray-600 mt-1">Noise: <span id="tp9-noise">--</span></div>
+                    </div>
+                    <div class="bg-black p-3 rounded">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div id="af7-status" class="w-2 h-2 rounded-full bg-gray-700"></div>
+                            <span class="text-white font-semibold">AF7</span>
+                        </div>
+                        <div class="text-xs text-gray-500">Left Front</div>
+                        <div class="text-xs text-gray-600 mt-1">Noise: <span id="af7-noise">--</span></div>
+                    </div>
+                    <div class="bg-black p-3 rounded">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div id="af8-status" class="w-2 h-2 rounded-full bg-gray-700"></div>
+                            <span class="text-white font-semibold">AF8</span>
+                        </div>
+                        <div class="text-xs text-gray-500">Right Front</div>
+                        <div class="text-xs text-gray-600 mt-1">Noise: <span id="af8-noise">--</span></div>
+                    </div>
+                    <div class="bg-black p-3 rounded">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div id="tp10-status" class="w-2 h-2 rounded-full bg-gray-700"></div>
+                            <span class="text-white font-semibold">TP10</span>
+                        </div>
+                        <div class="text-xs text-gray-500">Right Ear</div>
+                        <div class="text-xs text-gray-600 mt-1">Noise: <span id="tp10-noise">--</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="mt-6 bg-gray-900 rounded-lg p-4 border border-gray-800">
+            <div class="text-gray-400 text-sm space-y-1">
+                <p><strong class="text-white">Hand Control:</strong> Point index finger steady for 0.5s to select dice (turns gold)</p>
+                <p><strong class="text-white">Amplitude Slider:</strong> 5-1500µV scale - at 1500µV you see almost no variation unless significant spike</p>
+                <p><strong class="text-white">Filter Slider (0-10):</strong> Higher = smoother signal, less noise. At 10 = near-zero baseline</p>
+                <p><strong class="text-white">Time Scale:</strong> 2-16 seconds of signal history displayed</p>
+                <p><strong class="text-white">🟢 LEFT Eye Blink:</strong> AF7 spike >200µV and 2x stronger than AF8 → SPINS selected dice 🎲</p>
+                <p><strong class="text-white">🔴 RIGHT Eye Blink:</strong> AF8 spike >200µV and 2x stronger than AF7 → FLASHES dice RED for 1 second</p>
+                <p><strong class="text-white">Console (F12):</strong> See detailed blink detection: LEFT/RIGHT/BOTH with voltage levels</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MediaPipe Hands for hand tracking -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+
+    <script>
+        // ============================================
+        // CONFIGURATION
+        // ============================================
+        
+        const MUSE_SERVICE = '0000fe8d-0000-1000-8000-00805f9b34fb';
+        const CONTROL_CHAR = '273e0001-4c4d-454d-96be-f03bac821358';
+        const EEG_CHARS = {
+            TP9: '273e0003-4c4d-454d-96be-f03bac821358',
+            AF7: '273e0004-4c4d-454d-96be-f03bac821358',
+            AF8: '273e0005-4c4d-454d-96be-f03bac821358',
+            TP10: '273e0006-4c4d-454d-96be-f03bac821358'
+        };
+
+        // BLINK DETECTION THRESHOLDS - Based on 1500µV scale observations
+        const BLINK_THRESHOLD = 200; // Significant change threshold
+        const BLINK_MIN_DERIVATIVE = 50; // Rate of change
+        const BLINK_REFRACTORY = 600; // ms between blinks
+        const SIGNAL_QUALITY_THRESHOLD = 0.6; // Minimum signal quality
+        const EYE_DOMINANCE_RATIO = 2.0; // Dominant channel must be 2x stronger
+        
+        const FFT_SIZE = 256;
+        const SAMPLE_RATE = 256;
+
+        // HAND TRACKING THRESHOLDS
+        const SELECTION_DWELL_TIME = 500; // 0.5 seconds to select
+        const DESELECTION_SPEED_THRESHOLD = 300; // pixels per second
+        const SPEED_SMOOTHING = 10; // frames for speed averaging
+
+        // State
+        let device = null;
+        let server = null;
+        let museConnected = false;
+        let fakeMode = false;
+        let fakeInterval = null;
+        let wavesVisible = true;
+        
+        // Hand tracking
+        let handTrackingActive = false;
+        let hands = null;
+        let camera = null;
+        let usingHand = false;
+        let handDetected = false;
+        let lastHandPosition = { x: 0, y: 0 };
+        let handPositionHistory = [];
+        let handSpeed = 0;
+        
+        const eegBuffers = { TP9: [], AF7: [], AF8: [], TP10: [] };
+        const rawBuffers = { TP9: [], AF7: [], AF8: [], TP10: [] };
+        const sensorLastUpdate = { TP9: 0, AF7: 0, AF8: 0, TP10: 0 };
+        
+        let brainwaves = { delta: 0, theta: 0, alpha: 0, beta: 0, gamma: 0 };
+        let totalBlinks = 0;
+        let lastBlinkTime = 0;
+        
+        const blinkSignalBuffer = { AF7: [], AF8: [] };
+        const BLINK_BUFFER_SIZE = 200;
+        
+        // Channel streaming buffers (for visualization)
+        let timeScale = 8; // seconds
+        let streamBufferSize = timeScale * SAMPLE_RATE; // samples
+        let amplitudeScale = 1500; // µV - adjustable
+        let filterStrength = 5; // 0-10, higher = more filtering
+        const channelStreamBuffers = {
+            TP9: [],
+            AF7: [],
+            AF8: [],
+            TP10: []
+        };
+        
+        // Dice flash state
+        let diceFlashUntil = 0;
+        
+        let signalQuality = 0;
+        let channelNoise = { TP9: 0, AF7: 0, AF8: 0, TP10: 0 };
+
+        // Control position
+        let controlX = 0;
+        let controlY = 0;
+
+        // Game State - MORE SPACED OUT
+        const dice = [
+            { x: 300, y: 350, value: 1, spinning: false, selected: false, spinSpeed: 0, rotation: 0, dwellTime: 0 },
+            { x: 600, y: 350, value: 1, spinning: false, selected: false, spinSpeed: 0, rotation: 0, dwellTime: 0 },
+            { x: 900, y: 350, value: 1, spinning: false, selected: false, spinSpeed: 0, rotation: 0, dwellTime: 0 }
+        ];
+        const DICE_SIZE = 100;
+        let totalSpins = 0;
+
+        // ============================================
+        // HAND TRACKING
+        // ============================================
+
+        async function startHandTracking() {
+            try {
+                updateStatus('Starting hand tracking...');
+                
+                // Initialize MediaPipe Hands
+                hands = new Hands({
+                    locateFile: (file) => {
+                        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+                    }
+                });
+                
+                hands.setOptions({
+                    maxNumHands: 1,
+                    modelComplexity: 1,
+                    minDetectionConfidence: 0.7,
+                    minTrackingConfidence: 0.7
+                });
+                
+                hands.onResults(onHandResults);
+                
+                // Setup camera
+                const videoElement = document.getElementById('webcam');
+                camera = new Camera(videoElement, {
+                    onFrame: async () => {
+                        await hands.send({ image: videoElement });
+                    },
+                    width: 640,
+                    height: 480
+                });
+                
+                await camera.start();
+                
+                handTrackingActive = true;
+                usingHand = true;
+                document.getElementById('handContainer').classList.remove('hidden');
+                document.getElementById('handIndicator').className = 'w-3 h-3 rounded-full bg-green-500 animate-pulse';
+                document.getElementById('trackingMode').textContent = 'Hand Tracking';
+                document.getElementById('startHand').disabled = true;
+                updateStatus('✅ Hand tracking active! Point with your index finger');
+                
+            } catch (error) {
+                updateStatus('❌ Hand tracking failed: ' + error.message);
+                console.error(error);
+            }
+        }
+
+        function onHandResults(results) {
+            const canvas = document.getElementById('handCanvas');
+            const ctx = canvas.getContext('2d');
+            const video = document.getElementById('webcam');
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                handDetected = true;
+                document.getElementById('handStatus').textContent = 'Hand detected ✓';
+                document.getElementById('handStatus').className = 'text-green-400';
+                
+                const landmarks = results.multiHandLandmarks[0];
+                
+                // Draw hand landmarks
+                drawConnectors(ctx, landmarks, HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
+                drawLandmarks(ctx, landmarks, { color: '#FF0000', lineWidth: 1, radius: 3 });
+                
+                // Use INDEX_FINGER_TIP (landmark 8) for control
+                const indexTip = landmarks[8];
+                
+                // Highlight index finger tip
+                ctx.fillStyle = '#00FFFF';
+                ctx.beginPath();
+                ctx.arc(indexTip.x * canvas.width, indexTip.y * canvas.height, 10, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Map to game canvas (mirror horizontally for natural control)
+                const gameCanvas = document.getElementById('gameCanvas');
+                const newX = (1 - indexTip.x) * gameCanvas.width;
+                const newY = indexTip.y * gameCanvas.height;
+                
+                // Calculate speed
+                if (lastHandPosition.x !== 0) {
+                    const dx = newX - lastHandPosition.x;
+                    const dy = newY - lastHandPosition.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const instantSpeed = distance * 30; // Convert to pixels per second (assuming 30fps)
+                    
+                    // Add to history for smoothing
+                    handPositionHistory.push(instantSpeed);
+                    if (handPositionHistory.length > SPEED_SMOOTHING) {
+                        handPositionHistory.shift();
+                    }
+                    
+                    // Calculate average speed
+                    handSpeed = handPositionHistory.reduce((a, b) => a + b, 0) / handPositionHistory.length;
+                    document.getElementById('handSpeed').textContent = Math.round(handSpeed);
+                }
+                
+                lastHandPosition = { x: newX, y: newY };
+                controlX = newX;
+                controlY = newY;
+                
+            } else {
+                handDetected = false;
+                document.getElementById('handStatus').textContent = 'No hand detected';
+                document.getElementById('handStatus').className = 'text-red-400';
+                handSpeed = 0;
+            }
+        }
+
+        // ============================================
+        // ADVANCED SIGNAL PROCESSING
+        // ============================================
+
+        // Multi-stage aggressive filtering for clean baseline
+        function applyAggressiveFiltering(data) {
+            if (data.length < 50) return data;
+            
+            // Stage 1: Remove DC offset (mean removal)
+            const mean = data.reduce((a, b) => a + b, 0) / data.length;
+            let filtered = data.map(v => v - mean);
+            
+            // Stage 2: High-pass filter (remove drift < 0.5 Hz)
+            filtered = applyStrongHighPass(filtered, 0.5);
+            
+            // Stage 3: Notch filter at 50/60 Hz (power line noise)
+            filtered = applyNotchFilter(filtered, 50);
+            filtered = applyNotchFilter(filtered, 60);
+            
+            // Stage 4: Bandpass 1-30 Hz (blink artifacts are 1-10 Hz)
+            filtered = applyBandpassFilter(filtered, 1, 30);
+            
+            // Stage 5: Moving average smoothing
+            filtered = applyMovingAverage(filtered, 5);
+            
+            // Stage 6: Outlier removal (clip extreme values)
+            const std = calculateStd(filtered);
+            filtered = filtered.map(v => {
+                if (Math.abs(v) > std * 3) return 0; // Remove outliers
+                return v;
+            });
+            
+            return filtered;
+        }
+
+        function applyStrongHighPass(data, cutoffFreq) {
+            // Strong high-pass to remove all low-frequency drift
+            const RC = 1.0 / (2 * Math.PI * cutoffFreq);
+            const dt = 1.0 / SAMPLE_RATE;
+            const alpha = RC / (RC + dt);
+            
+            let filtered = [0];
+            for (let i = 1; i < data.length; i++) {
+                filtered[i] = alpha * (filtered[i-1] + data[i] - data[i-1]);
+            }
+            
+            // Apply twice for stronger effect
+            let doubleFiltered = [0];
+            for (let i = 1; i < filtered.length; i++) {
+                doubleFiltered[i] = alpha * (doubleFiltered[i-1] + filtered[i] - filtered[i-1]);
+            }
+            
+            return doubleFiltered;
+        }
+
+        function applyNotchFilter(data, notchFreq) {
+            // Simple notch filter to remove specific frequency
+            const bandwidth = 2; // Hz
+            const lowFreq = notchFreq - bandwidth;
+            const highFreq = notchFreq + bandwidth;
+            
+            // This is a simplified notch - just attenuate the frequency band
+            return data; // For now, rely on bandpass
+        }
+
+        function applyBandpassFilter(data, lowFreq, highFreq) {
+            // Bandpass: high-pass then low-pass
+            let filtered = applyHighPass(data, lowFreq);
+            filtered = applyLowPass(filtered, highFreq);
+            return filtered;
+        }
+
+        function applyHighPass(data, cutoffFreq) {
+            const RC = 1.0 / (2 * Math.PI * cutoffFreq);
+            const dt = 1.0 / SAMPLE_RATE;
+            const alpha = RC / (RC + dt);
+            
+            let filtered = [0];
+            for (let i = 1; i < data.length; i++) {
+                filtered[i] = alpha * (filtered[i-1] + data[i] - data[i-1]);
+            }
+            return filtered;
+        }
+
+        function applyLowPass(data, cutoffFreq) {
+            const RC = 1.0 / (2 * Math.PI * cutoffFreq);
+            const dt = 1.0 / SAMPLE_RATE;
+            const alpha = dt / (RC + dt);
+            
+            let filtered = [data[0]];
+            for (let i = 1; i < data.length; i++) {
+                filtered[i] = filtered[i-1] + alpha * (data[i] - filtered[i-1]);
+            }
+            return filtered;
+        }
+
+        function applyMovingAverage(data, windowSize) {
+            const result = [];
+            for (let i = 0; i < data.length; i++) {
+                let sum = 0;
+                let count = 0;
+                for (let j = Math.max(0, i - windowSize); j <= Math.min(data.length - 1, i + windowSize); j++) {
+                    sum += data[j];
+                    count++;
+                }
+                result.push(sum / count);
+            }
+            return result;
+        }
+
+        function calculateStd(data) {
+            const mean = data.reduce((a, b) => a + b, 0) / data.length;
+            const variance = data.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / data.length;
+            return Math.sqrt(variance);
+        }
+
+        function applyTimedomainBandpass(data, lowFreq, highFreq) {
+            if (data.length < 20) return data;
+            return applyAggressiveFiltering(data);
+        }
+
+        function calculateNoiseLevel(data) {
+            if (data.length < 10) return 0;
+            const mean = data.reduce((a, b) => a + b, 0) / data.length;
+            const variance = data.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / data.length;
+            return Math.sqrt(variance);
+        }
+
+        function calculateSignalQuality() {
+            const noises = Object.values(channelNoise);
+            if (noises.length === 0) return 0;
+            const avgNoise = noises.reduce((a, b) => a + b, 0) / noises.length;
+            return Math.max(0, Math.min(1, 1 - (avgNoise - 10) / 40));
+        }
+
+        // ============================================
+        // EYE BLINK DETECTION - Based on actual Muse app observations
+        // ============================================
+
+        function detectBlink(af7Data, af8Data) {
+            const now = Date.now();
+            
+            if (now - lastBlinkTime < BLINK_REFRACTORY || af7Data.length < 100 || af8Data.length < 100) {
+                return false;
+            }
+            
+            if (signalQuality < SIGNAL_QUALITY_THRESHOLD) {
+                return false;
+            }
+            
+            // Use moderate filtering - Muse already does filtering
+            const af7Filtered = applyModerateFiltering(af7Data.slice(-100));
+            const af8Filtered = applyModerateFiltering(af8Data.slice(-100));
+            
+            const windowSize = 60; // ~250ms at 256Hz
+            const af7Recent = af7Filtered.slice(-windowSize);
+            const af8Recent = af8Filtered.slice(-windowSize);
+            
+            // Calculate baseline from first third of window
+            const baselineSize = Math.floor(windowSize / 3);
+            const af7Baseline = af7Recent.slice(0, baselineSize).reduce((a, b) => a + b, 0) / baselineSize;
+            const af8Baseline = af8Recent.slice(0, baselineSize).reduce((a, b) => a + b, 0) / baselineSize;
+            
+            // Find peak deviation from baseline in detection window (last 2/3)
+            const af7Deviations = af7Recent.slice(baselineSize).map(v => Math.abs(v - af7Baseline));
+            const af8Deviations = af8Recent.slice(baselineSize).map(v => Math.abs(v - af8Baseline));
+            
+            const af7Peak = Math.max(...af7Deviations);
+            const af8Peak = Math.max(...af8Deviations);
+            
+            // Calculate derivative (rate of change)
+            const af7Derivative = calculateMaxDerivative(af7Recent.slice(-30));
+            const af8Derivative = calculateMaxDerivative(af8Recent.slice(-30));
+            
+            // Update display
+            const af7Current = af7Recent[af7Recent.length - 1];
+            const af8Current = af8Recent[af8Recent.length - 1];
+            document.getElementById('currentAF7').textContent = af7Current.toFixed(1) + 'µV';
+            document.getElementById('currentAF8').textContent = af8Current.toFixed(1) + 'µV';
+            
+            // Determine which eye blinked
+            let eyeBlinked = null;
+            let blinkDetected = false;
+            
+            // RIGHT EYE BLINK: AF8 shows significant change and is dominant
+            if (af8Peak > BLINK_THRESHOLD && 
+                af8Peak > (af7Peak * EYE_DOMINANCE_RATIO) && 
+                af8Derivative > BLINK_MIN_DERIVATIVE) {
+                eyeBlinked = 'RIGHT';
+                blinkDetected = true;
+            }
+            // LEFT EYE BLINK: AF7 shows significant change and is dominant
+            else if (af7Peak > BLINK_THRESHOLD && 
+                     af7Peak > (af8Peak * EYE_DOMINANCE_RATIO) && 
+                     af7Derivative > BLINK_MIN_DERIVATIVE) {
+                eyeBlinked = 'LEFT';
+                blinkDetected = true;
+            }
+            // BOTH EYES: Both channels show similar large changes
+            else if (af7Peak > BLINK_THRESHOLD && 
+                     af8Peak > BLINK_THRESHOLD &&
+                     Math.abs(af7Peak - af8Peak) < BLINK_THRESHOLD * 0.5) {
+                eyeBlinked = 'BOTH';
+                blinkDetected = true;
+            }
+            
+            if (blinkDetected) {
+                lastBlinkTime = now;
+                totalBlinks++;
+                document.getElementById('totalBlinks').textContent = totalBlinks;
+                document.getElementById('totalBlinks2').textContent = totalBlinks;
+                
+                console.log(`${eyeBlinked} EYE BLINK: AF7=${af7Peak.toFixed(1)}µV, AF8=${af8Peak.toFixed(1)}µV, Ratio=${(Math.max(af7Peak, af8Peak) / Math.min(af7Peak, af8Peak)).toFixed(2)}`);
+                
+                // LEFT eye blinks → SPIN DICE
+                if (eyeBlinked === 'LEFT') {
+                    onBlinkDetected();
+                    updateStatus(`✨ LEFT eye blink - SPINNING DICE!`);
+                }
+                // RIGHT eye blinks → FLASH DICE RED
+                else if (eyeBlinked === 'RIGHT') {
+                    flashDiceRed();
+                    updateStatus(`🔴 RIGHT eye blink - DICE FLASH RED!`);
+                } 
+                // BOTH eyes
+                else {
+                    updateStatus(`👁️ BOTH eyes blink detected`);
+                }
+                
+                return true;
+            }
+            
+            return false;
+        }
+
+        function calculateMaxDerivative(data) {
+            if (data.length < 2) return 0;
+            let maxDeriv = 0;
+            for (let i = 1; i < data.length; i++) {
+                const deriv = Math.abs(data[i] - data[i - 1]);
+                if (deriv > maxDeriv) maxDeriv = deriv;
+            }
+            return maxDeriv;
+        }
+
+        function onBlinkDetected() {
+            const selectedDice = dice.find(d => d.selected);
+            
+            if (selectedDice && !selectedDice.spinning) {
+                spinDice(selectedDice);
+                totalSpins++;
+                document.getElementById('totalSpins').textContent = totalSpins;
+                updateStatus(`✨ LEFT eye blink! Spinning dice ${dice.indexOf(selectedDice) + 1}`);
+            } else if (!selectedDice) {
+                updateStatus('👁️ Blink detected - point at a dice for 0.5s to select');
+            }
+        }
+
+        function flashDiceRed() {
+            const selectedDice = dice.find(d => d.selected);
+            
+            if (selectedDice) {
+                // Set flash timer for 1 second
+                diceFlashUntil = Date.now() + 1000;
+                updateStatus(`🔴 RIGHT eye blink! Dice ${dice.indexOf(selectedDice) + 1} flashing red`);
+            } else {
+                updateStatus('👁️ RIGHT eye blink - but no dice selected');
+            }
+        }
+
+        function onBlinkDetected() {
+            const selectedDice = dice.find(d => d.selected);
+            
+            if (selectedDice && !selectedDice.spinning) {
+                spinDice(selectedDice);
+                totalSpins++;
+                document.getElementById('totalSpins').textContent = totalSpins;
+                updateStatus(`✨ BLINK! Spinning dice ${dice.indexOf(selectedDice) + 1}`);
+            } else if (!selectedDice) {
+                updateStatus('👁️ Blink detected - point at a dice for 5s to select');
+            }
+        }
+
+        // ============================================
+        // MUSE CONNECTION (abbreviated - same as before)
+        // ============================================
+
+        // ============================================
+        // 4-CHANNEL STREAMING VISUALIZATION
+        // ============================================
+
+        function updateTimeScale() {
+            timeScale = parseInt(document.getElementById('timeScaleSelect').value);
+            streamBufferSize = timeScale * SAMPLE_RATE;
+            console.log(`Time scale updated to ${timeScale} seconds`);
+        }
+
+        function updateAmplitudeScale() {
+            amplitudeScale = parseInt(document.getElementById('amplitudeSlider').value);
+            document.getElementById('amplitudeValue').textContent = amplitudeScale + 'µV';
+            console.log(`Amplitude scale: ${amplitudeScale}µV`);
+        }
+
+        function updateFilterStrength() {
+            filterStrength = parseInt(document.getElementById('filterSlider').value);
+            document.getElementById('filterValue').textContent = filterStrength;
+            console.log(`Filter strength: ${filterStrength}/10`);
+        }
+
+        function drawChannelStream(channel, color) {
+            const canvas = document.getElementById(`${channel.toLowerCase()}Canvas`);
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            
+            const data = channelStreamBuffers[channel];
+            if (data.length < 2) return;
+            
+            // Clear
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, w, h);
+            
+            // Apply moderate filtering
+            const filtered = data.length > 20 ? applyModerateFiltering(data) : data;
+            
+            const SCALE = amplitudeScale; // Use adjustable amplitude
+            
+            // Draw grid lines at appropriate intervals based on scale
+            ctx.strokeStyle = '#1a1a1a';
+            ctx.lineWidth = 1;
+            let gridIntervals = [];
+            if (SCALE >= 1000) {
+                gridIntervals = [SCALE * 0.33, SCALE * 0.66]; // 500µV, 1000µV for 1500µV scale
+            } else if (SCALE >= 500) {
+                gridIntervals = [SCALE * 0.5]; // Mid point
+            } else if (SCALE >= 100) {
+                gridIntervals = [SCALE * 0.33, SCALE * 0.66];
+            } else {
+                gridIntervals = [SCALE * 0.5]; // Just middle line for very small scales
+            }
+            
+            gridIntervals.forEach(val => {
+                const y1 = h / 2 - (val / SCALE) * (h / 2);
+                const y2 = h / 2 + (val / SCALE) * (h / 2);
+                ctx.beginPath();
+                ctx.moveTo(0, y1);
+                ctx.lineTo(w, y1);
+                ctx.moveTo(0, y2);
+                ctx.lineTo(w, y2);
+                ctx.stroke();
+            });
+            
+            // Center line (0µV)
+            ctx.strokeStyle = '#2a2a2a';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, h / 2);
+            ctx.lineTo(w, h / 2);
+            ctx.stroke();
+            
+            // Draw threshold lines for AF7 and AF8
+            if (channel === 'AF7' || channel === 'AF8') {
+                const thresholdY = h / 2 - (BLINK_THRESHOLD / SCALE) * (h / 2);
+                const thresholdYNeg = h / 2 + (BLINK_THRESHOLD / SCALE) * (h / 2);
+                ctx.strokeStyle = '#dc2626';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([3, 3]);
+                ctx.beginPath();
+                ctx.moveTo(0, thresholdY);
+                ctx.lineTo(w, thresholdY);
+                ctx.moveTo(0, thresholdYNeg);
+                ctx.lineTo(w, thresholdYNeg);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+            
+            // Draw signal
+            ctx.strokeStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            const samplesPerPixel = streamBufferSize / w;
+            for (let x = 0; x < w; x++) {
+                const sampleIdx = Math.floor(x * samplesPerPixel);
+                if (sampleIdx >= filtered.length) break;
+                
+                const val = filtered[sampleIdx];
+                const y = h / 2 - (val / SCALE) * (h / 2);
+                
+                if (x === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            
+            // Draw scale labels
+            ctx.fillStyle = '#4b5563';
+            ctx.font = '9px monospace';
+            ctx.textAlign = 'right';
+            ctx.fillText(`+${SCALE}`, w - 3, 10);
+            ctx.fillText('0', w - 3, h / 2 + 3);
+            ctx.fillText(`-${SCALE}`, w - 3, h - 3);
+            
+            // Update current value display
+            if (filtered.length > 0) {
+                const current = filtered[filtered.length - 1];
+                document.getElementById(`${channel.toLowerCase()}-current`).textContent = current.toFixed(1) + 'µV';
+            }
+        }
+
+        function drawAllChannels() {
+            const channelColors = {
+                TP9: { r: 147, g: 51, b: 234 },   // Purple
+                AF7: { r: 34, g: 197, b: 94 },     // Green
+                AF8: { r: 59, g: 130, b: 246 },    // Blue
+                TP10: { r: 249, g: 115, b: 22 }    // Orange
+            };
+            
+            Object.keys(channelStreamBuffers).forEach(channel => {
+                drawChannelStream(channel, channelColors[channel]);
+            });
+            
+            requestAnimationFrame(drawAllChannels);
+        }
+
+        // ============================================
+        // MUSE CONNECTION
+        // ============================================
+
+        async function connectMuse() {
+            if (fakeMode) {
+                updateStatus('Stop demo mode first');
+                return;
+            }
+            
+            try {
+                updateStatus('Searching for Muse...');
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [{ services: [MUSE_SERVICE] }],
+                    optionalServices: [MUSE_SERVICE]
+                });
+
+                device.addEventListener('gattserverdisconnected', onDisconnected);
+                server = await device.gatt.connect();
+                const service = await server.getPrimaryService(MUSE_SERVICE);
+
+                try {
+                    const control = await service.getCharacteristic(CONTROL_CHAR);
+                    await control.writeValue(new Uint8Array([0x02, 0x64, 0x0a]));
+                    await new Promise(r => setTimeout(r, 100));
+                    await control.writeValue(new Uint8Array([0x02, 0x73, 0x0a]));
+                } catch (e) {}
+
+                for (const [name, uuid] of Object.entries(EEG_CHARS)) {
+                    try {
+                        const char = await service.getCharacteristic(uuid);
+                        await char.startNotifications();
+                        char.addEventListener('characteristicvaluechanged', (e) => handleEEG(e, name));
+                    } catch (e) {}
+                }
+
+                museConnected = true;
+                updateStatus('✅ Muse connected!');
+                document.getElementById('museIndicator').className = 'w-3 h-3 rounded-full bg-green-500 animate-pulse';
+                document.getElementById('connectBtn').disabled = true;
+                
+            } catch (error) {
+                updateStatus('Connection failed: ' + error.message);
+            }
+        }
+
+        function handleEEG(event, channel) {
+            const value = event.target.value;
+            sensorLastUpdate[channel] = Date.now();
+            
+            // Update LED indicator
+            document.getElementById(`${channel.toLowerCase()}-led`).className = 'w-2 h-2 rounded-full bg-green-500 animate-pulse';
+            document.getElementById(`${channel.toLowerCase()}-status`).className = 'w-2 h-2 rounded-full bg-green-500 animate-pulse';
+
+            const samples = [];
+            for (let i = 0; i < value.byteLength - 1; i += 3) {
+                if (i + 2 < value.byteLength) {
+                    const s1 = (value.getUint8(i) << 4) | (value.getUint8(i + 1) >> 4);
+                    const s2 = ((value.getUint8(i + 1) & 0x0F) << 8) | value.getUint8(i + 2);
+                    samples.push(s1, s2);
+                }
+            }
+
+            samples.forEach(sample => {
+                const voltage = (sample - 2048) * 0.48828125;
+                rawBuffers[channel].push(voltage);
+                if (rawBuffers[channel].length > 100) rawBuffers[channel].shift();
+                eegBuffers[channel].push(voltage);
+                
+                // Add to channel stream buffer for visualization
+                channelStreamBuffers[channel].push(voltage);
+                if (channelStreamBuffers[channel].length > streamBufferSize) {
+                    channelStreamBuffers[channel].shift();
+                }
+                
+                if (channel === 'AF7' || channel === 'AF8') {
+                    blinkSignalBuffer[channel].push(voltage);
+                    if (blinkSignalBuffer[channel].length > BLINK_BUFFER_SIZE) {
+                        blinkSignalBuffer[channel].shift();
+                    }
+                }
+            });
+
+            if (eegBuffers[channel].length > FFT_SIZE * 2) {
+                eegBuffers[channel] = eegBuffers[channel].slice(-FFT_SIZE);
+            }
+            
+            if (rawBuffers[channel].length > 50) {
+                channelNoise[channel] = calculateNoiseLevel(rawBuffers[channel].slice(-50));
+                document.getElementById(`${channel.toLowerCase()}-noise`).textContent = 
+                    channelNoise[channel].toFixed(1) + 'µV';
+            }
+            
+            signalQuality = calculateSignalQuality();
+            document.getElementById('qualityBar').style.width = (signalQuality * 100) + '%';
+            document.getElementById('signalText').textContent = (signalQuality * 100).toFixed(0) + '%';
+            
+            if (signalQuality > 0.8) {
+                document.getElementById('signalQuality').className = 'w-3 h-3 rounded-full bg-green-500 animate-pulse';
+            } else if (signalQuality > 0.5) {
+                document.getElementById('signalQuality').className = 'w-3 h-3 rounded-full bg-yellow-500';
+            } else {
+                document.getElementById('signalQuality').className = 'w-3 h-3 rounded-full bg-red-500';
+            }
+
+            if ((channel === 'AF7' || channel === 'AF8') && eegBuffers.AF7.length > 100 && eegBuffers.AF8.length > 100) {
+                detectBlink(eegBuffers.AF7, eegBuffers.AF8);
+            }
+
+            if (channel === 'AF7' && eegBuffers[channel].length >= FFT_SIZE) {
+                processBrainwaves();
+            }
+        }
+
+        function processBrainwaves() {
+            const channels = Object.values(eegBuffers).filter(b => b.length >= FFT_SIZE);
+            if (channels.length === 0) return;
+
+            const avgBuffer = new Array(FFT_SIZE).fill(0);
+            channels.forEach(buffer => {
+                for (let i = 0; i < FFT_SIZE; i++) {
+                    avgBuffer[i] += buffer[buffer.length - FFT_SIZE + i];
+                }
+            });
+            avgBuffer.forEach((val, i) => avgBuffer[i] /= channels.length);
+
+            const fft = performFFT(avgBuffer);
+            
+            const delta = getBandPower(fft, 0.5, 4);
+            const theta = getBandPower(fft, 4, 8);
+            const alpha = getBandPower(fft, 8, 13);
+            const beta = getBandPower(fft, 13, 30);
+            const gamma = getBandPower(fft, 30, 100);
+
+            const total = delta + theta + alpha + beta + gamma;
+            if (total > 0) {
+                brainwaves = {
+                    delta: delta / total,
+                    theta: theta / total,
+                    alpha: alpha / total,
+                    beta: beta / total,
+                    gamma: gamma / total
+                };
+            }
+
+            updateBrainwaveDisplay();
+        }
+
+        function performFFT(buffer) {
+            const N = buffer.length;
+            const result = new Array(N / 2).fill(0);
+            for (let k = 0; k < N / 2; k++) {
+                let real = 0, imag = 0;
+                for (let n = 0; n < N; n++) {
+                    const angle = -2 * Math.PI * k * n / N;
+                    real += buffer[n] * Math.cos(angle);
+                    imag += buffer[n] * Math.sin(angle);
+                }
+                result[k] = Math.sqrt(real * real + imag * imag) / N;
+            }
+            return result;
+        }
+
+        function getBandPower(fft, minFreq, maxFreq) {
+            const binSize = SAMPLE_RATE / FFT_SIZE;
+            const minBin = Math.floor(minFreq / binSize);
+            const maxBin = Math.ceil(maxFreq / binSize);
+            let power = 0;
+            for (let i = minBin; i <= maxBin && i < fft.length; i++) {
+                power += fft[i] * fft[i];
+            }
+            return power || 0.0001;
+        }
+
+        function updateBrainwaveDisplay() {
+            if (!wavesVisible) return;
+            ['alpha', 'beta', 'theta', 'delta'].forEach(band => {
+                const percent = (brainwaves[band] * 100);
+                document.getElementById(`${band}Bar`).style.width = percent + '%';
+                document.getElementById(`${band}Value`).textContent = percent.toFixed(0) + '%';
+            });
+        }
+
+        // ============================================
+        // GAME LOGIC
+        // ============================================
+
+        const canvas = document.getElementById('gameCanvas');
+        canvas.addEventListener('mousemove', (e) => {
+            if (fakeMode || usingHand) return;
+            const rect = canvas.getBoundingClientRect();
+            controlX = ((e.clientX - rect.left) / rect.width) * canvas.width;
+            controlY = ((e.clientY - rect.top) / rect.height) * canvas.height;
+        });
+
+        function spinDice(die) {
+            if (die.spinning) return;
+            die.spinning = true;
+            die.spinSpeed = 0.3;
+            die.value = Math.floor(Math.random() * 6) + 1;
+        }
+
+        function updateGame() {
+            dice.forEach((die, idx) => {
+                if (die.spinning) {
+                    die.rotation += die.spinSpeed;
+                    die.spinSpeed *= 0.95;
+                    if (die.spinSpeed < 0.01) {
+                        die.spinning = false;
+                        die.spinSpeed = 0;
+                        die.rotation = 0;
+                    }
+                }
+                
+                const dist = Math.sqrt(Math.pow(controlX - die.x, 2) + Math.pow(controlY - die.y, 2));
+                const isPointing = dist < DICE_SIZE;
+                
+                // Check speed threshold for deselection
+                const movingTooFast = handSpeed > DESELECTION_SPEED_THRESHOLD;
+                
+                if (isPointing && !die.selected && !movingTooFast) {
+                    die.dwellTime += 16; // ~60fps
+                    if (die.dwellTime >= SELECTION_DWELL_TIME) {
+                        dice.forEach(d => { d.selected = false; d.dwellTime = 0; });
+                        die.selected = true;
+                        updateStatus(`✅ Dice ${idx + 1} selected! Blink to spin.`);
+                    }
+                } else if (movingTooFast && die.selected) {
+                    // Deselect if moving too fast
+                    die.selected = false;
+                    die.dwellTime = 0;
+                    updateStatus('⚡ Moved too fast - dice deselected');
+                } else if (!isPointing && die.selected) {
+                    die.selected = false;
+                    die.dwellTime = 0;
+                } else if (!isPointing) {
+                    die.dwellTime = Math.max(0, die.dwellTime - 32);
+                }
+                
+                if (die.selected && !die.spinning) {
+                    const smoothing = 0.1;
+                    die.x += (controlX - die.x) * smoothing;
+                    die.y += (controlY - die.y) * smoothing;
+                }
+            });
+        }
+
+        function drawGame() {
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, w, h);
+            
+            // Draw cursor
+            ctx.strokeStyle = handSpeed > DESELECTION_SPEED_THRESHOLD ? '#ef4444' : '#10b981';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(controlX, controlY, 15, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(controlX - 20, controlY);
+            ctx.lineTo(controlX + 20, controlY);
+            ctx.moveTo(controlX, controlY - 20);
+            ctx.lineTo(controlX, controlY + 20);
+            ctx.stroke();
+            
+            // Draw dice
+            dice.forEach((die, idx) => {
+                ctx.save();
+                ctx.translate(die.x, die.y);
+                
+                if (die.spinning) ctx.rotate(die.rotation);
+                
+                // Check if this dice should flash red
+                const isFlashing = die.selected && Date.now() < diceFlashUntil;
+                
+                if (die.selected && !isFlashing) {
+                    ctx.shadowColor = '#fbbf24';
+                    ctx.shadowBlur = 40;
+                }
+                
+                if (isFlashing) {
+                    ctx.shadowColor = '#dc2626';
+                    ctx.shadowBlur = 50;
+                }
+                
+                // Dice color: red if flashing, gold if selected, dark gray if not
+                ctx.fillStyle = isFlashing ? '#dc2626' : (die.selected ? '#fbbf24' : '#1f2937');
+                ctx.fillRect(-DICE_SIZE/2, -DICE_SIZE/2, DICE_SIZE, DICE_SIZE);
+                
+                ctx.strokeStyle = isFlashing ? '#991b1b' : (die.selected ? '#f59e0b' : '#4b5563');
+                ctx.lineWidth = 3;
+                ctx.strokeRect(-DICE_SIZE/2, -DICE_SIZE/2, DICE_SIZE, DICE_SIZE);
+                
+                ctx.shadowBlur = 0;
+                
+                if (!die.spinning) {
+                    ctx.fillStyle = isFlashing ? '#ffffff' : (die.selected ? '#000000' : '#9ca3af');
+                    drawDiceDots(ctx, die.value, DICE_SIZE);
+                }
+                
+                // Progress circle for selection
+                if (die.dwellTime > 0 && !die.selected) {
+                    const progress = die.dwellTime / SELECTION_DWELL_TIME;
+                    ctx.strokeStyle = '#10b981';
+                    ctx.lineWidth = 6;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, DICE_SIZE/2 + 20, -Math.PI/2, -Math.PI/2 + (progress * Math.PI * 2));
+                    ctx.stroke();
+                    
+                    // Show timer
+                    ctx.fillStyle = '#10b981';
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`${((SELECTION_DWELL_TIME - die.dwellTime) / 1000).toFixed(1)}s`, 0, -DICE_SIZE/2 - 35);
+                }
+                
+                ctx.restore();
+            });
+            
+            updateGame();
+            requestAnimationFrame(drawGame);
+        }
+
+        function drawDiceDots(ctx, value, size) {
+            const dotSize = size * 0.14;
+            const offset = size * 0.28;
+            
+            const positions = {
+                1: [[0, 0]],
+                2: [[-offset, -offset], [offset, offset]],
+                3: [[-offset, -offset], [0, 0], [offset, offset]],
+                4: [[-offset, -offset], [offset, -offset], [-offset, offset], [offset, offset]],
+                5: [[-offset, -offset], [offset, -offset], [0, 0], [-offset, offset], [offset, offset]],
+                6: [[-offset, -offset], [offset, -offset], [-offset, 0], [offset, 0], [-offset, offset], [offset, offset]]
+            };
+            
+            const dots = positions[value] || positions[1];
+            dots.forEach(([x, y]) => {
+                ctx.beginPath();
+                ctx.arc(x, y, dotSize, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function drawBlinkSignal() {
+            const canvas = document.getElementById('blinkSignal');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, w, h);
+            
+            // Apply moderate filtering (less aggressive since Muse app already filters)
+            const af7Filtered = blinkSignalBuffer.AF7.length > 50 ? 
+                applyModerateFiltering(blinkSignalBuffer.AF7) : blinkSignalBuffer.AF7;
+            const af8Filtered = blinkSignalBuffer.AF8.length > 50 ? 
+                applyModerateFiltering(blinkSignalBuffer.AF8) : blinkSignalBuffer.AF8;
+            
+            // Use 1500µV scale to match Muse app
+            const SCALE = 1500;
+            
+            // Draw threshold line at ±200µV
+            const thresholdY = h / 2 - (BLINK_THRESHOLD / SCALE) * (h / 2);
+            const thresholdYNeg = h / 2 + (BLINK_THRESHOLD / SCALE) * (h / 2);
+            ctx.strokeStyle = '#dc2626';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(0, thresholdY);
+            ctx.lineTo(w, thresholdY);
+            ctx.moveTo(0, thresholdYNeg);
+            ctx.lineTo(w, thresholdYNeg);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Center line (0µV)
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, h / 2);
+            ctx.lineTo(w, h / 2);
+            ctx.stroke();
+            
+            // Draw grid lines at ±500µV, ±1000µV
+            ctx.strokeStyle = '#1f2937';
+            ctx.lineWidth = 1;
+            [500, 1000].forEach(val => {
+                const y1 = h / 2 - (val / SCALE) * (h / 2);
+                const y2 = h / 2 + (val / SCALE) * (h / 2);
+                ctx.beginPath();
+                ctx.moveTo(0, y1);
+                ctx.lineTo(w, y1);
+                ctx.moveTo(0, y2);
+                ctx.lineTo(w, y2);
+                ctx.stroke();
+            });
+            
+            // Draw AF7 signal (green - left eye)
+            if (af7Filtered.length > 1) {
+                ctx.strokeStyle = '#10b981';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                af7Filtered.forEach((val, i) => {
+                    const x = (i / BLINK_BUFFER_SIZE) * w;
+                    const y = h / 2 - (val / SCALE) * (h / 2);
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+            }
+            
+            // Draw AF8 signal (blue - right eye)
+            if (af8Filtered.length > 1) {
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                af8Filtered.forEach((val, i) => {
+                    const x = (i / BLINK_BUFFER_SIZE) * w;
+                    const y = h / 2 - (val / SCALE) * (h / 2);
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+            }
+            
+            // Draw scale labels
+            ctx.fillStyle = '#6b7280';
+            ctx.font = '10px monospace';
+            ctx.textAlign = 'right';
+            ctx.fillText('+1500µV', w - 5, 12);
+            ctx.fillText('0µV', w - 5, h / 2 + 4);
+            ctx.fillText('-1500µV', w - 5, h - 5);
+            
+            requestAnimationFrame(drawBlinkSignal);
+        }
+
+        // Adjustable filtering based on filter strength slider
+        function applyModerateFiltering(data) {
+            if (data.length < 20) return data;
+            
+            // Remove DC offset
+            const mean = data.reduce((a, b) => a + b, 0) / data.length;
+            let filtered = data.map(v => v - mean);
+            
+            if (filterStrength === 0) return filtered; // No filtering
+            
+            // Apply smoothing based on filter strength (0-10)
+            // Higher strength = more smoothing = less noise but also dampens real signals
+            const windowSize = Math.floor(filterStrength / 2) + 1; // 1-6
+            filtered = applyMovingAverage(filtered, windowSize);
+            
+            // For high filter strength (>7), apply additional high-pass to remove drift
+            if (filterStrength > 7) {
+                filtered = applyHighPass(filtered, 0.5);
+            }
+            
+            // At maximum filter (10), apply aggressive outlier removal
+            if (filterStrength === 10) {
+                const std = calculateStd(filtered);
+                const threshold = std * 2; // Only keep signals within 2 std dev
+                filtered = filtered.map(v => Math.abs(v) > threshold ? 0 : v);
+            }
+            
+            return filtered;
+        }
+
+        // ============================================
+        // UI CONTROLS
+        // ============================================
+
+        function toggleWaveVisibility() {
+            wavesVisible = !wavesVisible;
+            const panel = document.getElementById('wavesPanel');
+            const btn = document.getElementById('toggleWaves');
+            
+            if (wavesVisible) {
+                panel.style.display = 'block';
+                btn.textContent = '👁️ Hide Waves';
+            } else {
+                panel.style.display = 'none';
+                btn.textContent = '👁️ Show Waves';
+            }
+        }
+
+        function toggleFakeData() {
+            fakeMode = !fakeMode;
+            const btn = document.getElementById('fakeDataBtn');
+            
+            if (fakeMode) {
+                btn.textContent = '⏹️ Stop Demo';
+                document.getElementById('museIndicator').className = 'w-3 h-3 rounded-full bg-yellow-500 animate-pulse';
+                updateStatus('Demo mode');
+                startFakeData();
+            } else {
+                btn.textContent = '🎭 Demo Mode';
+                document.getElementById('museIndicator').className = 'w-3 h-3 rounded-full bg-red-500';
+                updateStatus('Ready');
+                stopFakeData();
+            }
+        }
+
+        function startFakeData() {
+            let blinkTimer = 0;
+            let angle = 0;
+            
+            fakeInterval = setInterval(() => {
+                const time = Date.now() / 1000;
+                
+                signalQuality = 0.9;
+                channelNoise = { TP9: 8, AF7: 7, AF8: 8, TP10: 9 };
+                
+                ['TP9', 'AF7', 'AF8', 'TP10'].forEach(ch => {
+                    document.getElementById(`${ch.toLowerCase()}-status`).className = 'w-2 h-2 rounded-full bg-green-500';
+                    document.getElementById(`${ch.toLowerCase()}-noise`).textContent = channelNoise[ch].toFixed(1) + 'µV';
+                });
+                
+                document.getElementById('qualityBar').style.width = '90%';
+                document.getElementById('signalText').textContent = '90%';
+                document.getElementById('signalQuality').className = 'w-3 h-3 rounded-full bg-green-500 animate-pulse';
+                
+                brainwaves = {
+                    delta: Math.max(0, Math.min(1, 0.25 + Math.sin(time * 0.5) * 0.15)),
+                    theta: Math.max(0, Math.min(1, 0.30 + Math.sin(time * 0.8) * 0.2)),
+                    alpha: Math.max(0, Math.min(1, 0.25 + Math.sin(time * 1.2) * 0.2)),
+                    beta: Math.max(0, Math.min(1, 0.20 + Math.sin(time * 1.8) * 0.15))
+                };
+                updateBrainwaveDisplay();
+                
+                angle += 0.012;
+                controlX = canvas.width/2 + Math.cos(angle) * 250;
+                controlY = canvas.height/2 + Math.sin(angle) * 150;
+                handSpeed = Math.abs(Math.sin(angle * 5)) * 200;
+                document.getElementById('handSpeed').textContent = Math.round(handSpeed);
+                
+                blinkTimer++;
+                let af7Val, af8Val;
+                if (blinkTimer > 150 && blinkTimer < 165) {
+                    af7Val = 350 + Math.random() * 50;
+                    af8Val = 340 + Math.random() * 50;
+                } else if (blinkTimer > 250) {
+                    blinkTimer = 0;
+                    af7Val = Math.random() * 10 - 5;
+                    af8Val = Math.random() * 10 - 5;
+                } else {
+                    af7Val = Math.random() * 10 - 5;
+                    af8Val = Math.random() * 10 - 5;
+                }
+                
+                blinkSignalBuffer.AF7.push(af7Val);
+                blinkSignalBuffer.AF8.push(af8Val);
+                if (blinkSignalBuffer.AF7.length > BLINK_BUFFER_SIZE) {
+                    blinkSignalBuffer.AF7.shift();
+                    blinkSignalBuffer.AF8.shift();
+                }
+                
+                eegBuffers.AF7.push(af7Val);
+                eegBuffers.AF8.push(af8Val);
+                detectBlink(eegBuffers.AF7, eegBuffers.AF8);
+            }, 50);
+        }
+
+        function stopFakeData() {
+            if (fakeInterval) {
+                clearInterval(fakeInterval);
+                fakeInterval = null;
+            }
+            signalQuality = 0;
+            channelNoise = { TP9: 0, AF7: 0, AF8: 0, TP10: 0 };
+        }
+
+        function onDisconnected() {
+            museConnected = false;
+            updateStatus('Disconnected');
+            document.getElementById('museIndicator').className = 'w-3 h-3 rounded-full bg-red-500';
+            document.getElementById('connectBtn').disabled = false;
+        }
+
+        function updateStatus(msg) {
+            document.getElementById('statusText').textContent = msg;
+        }
+
+        // Start
+        drawGame();
+        drawAllChannels(); // Draw 4-channel streams
+        updateStatus('Use mouse or click "Start Hand Tracking"');
+    </script>
+</body>
+</html>

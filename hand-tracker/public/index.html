@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APO Technology - Brain-Computer Interface Projects</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            color: #1a1a1a;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Navigation Bar */
+        .navbar {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+            padding: 20px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .navbar-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .navbar-logo {
+            height: 60px;
+            width: auto;
+            opacity: 0.9;
+            transition: opacity 0.3s ease;
+        }
+
+        .navbar-logo:hover {
+            opacity: 1;
+        }
+
+        .navbar-menu {
+            display: flex;
+            gap: 32px;
+            list-style: none;
+            align-items: center;
+            margin: 0 auto;
+        }
+
+        .navbar-menu li {
+            position: relative;
+        }
+
+        .navbar-menu li a {
+            color: #1a1a1a;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: opacity 0.2s ease;
+            letter-spacing: -0.01em;
+        }
+
+        .navbar-menu li a:hover {
+            opacity: 0.7;
+        }
+
+        /* Make Learn non-clickable */
+        .navbar-menu li a.no-click {
+            cursor: default;
+            pointer-events: none;
+        }
+
+        /* Dropdown Menu - Fixed version */
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-top: 0px;
+            padding-top: 20px;
+            width: 600px;
+            z-index: 1000;
+        }
+
+        .dropdown-menu-content {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .navbar-menu li:hover .dropdown-menu {
+            display: block;
+        }
+
+        .dropdown-columns {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+        }
+
+        .dropdown-column {
+            position: relative;
+            padding-right: 30px;
+        }
+
+        .dropdown-column:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: rgba(128, 128, 128, 0.3);
+        }
+
+        .dropdown-column h4 {
+            font-size: 12px;
+            font-weight: 600;
+            color: #888;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .dropdown-column ul {
+            list-style: none;
+        }
+
+        .dropdown-column ul li {
+            margin-bottom: 8px;
+        }
+
+        .dropdown-column ul li a {
+            font-size: 14px;
+            color: #888;
+            text-decoration: none;
+            transition: opacity 0.2s ease;
+            display: block;
+            padding: 4px 0;
+            pointer-events: auto;
+        }
+
+        .dropdown-column ul li a:hover {
+            opacity: 0.6;
+        }
+
+        .navbar-cta {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .navbar-cta a {
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            padding: 10px 20px;
+            border-radius: 8px;
+        }
+
+        .navbar-cta .contact-btn {
+            color: #1a1a1a;
+            border: 1px solid rgba(0, 0, 0, 0.15);
+            background: transparent;
+        }
+
+        .navbar-cta .contact-btn:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .navbar-cta .demo-btn {
+            background: #1a1a1a;
+            color: white;
+        }
+
+        .navbar-cta .demo-btn:hover {
+            background: #000;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 80px 20px 60px;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            width: 180px;
+            max-width: 90%;
+            margin-bottom: 30px;
+            filter: grayscale(100%) contrast(1.1);
+            opacity: 0.9;
+        }
+
+        .header h1 {
+            font-size: 2.8em;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #1a1a1a;
+            letter-spacing: -0.03em;
+        }
+
+        .header p {
+            font-size: 1.15em;
+            color: #666;
+            max-width: 700px;
+            margin: 0 auto;
+            font-weight: 400;
+        }
+
+        /* What is BCI Section */
+        .bci-info {
+            padding: 70px 20px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            margin: 40px 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .bci-info h2 {
+            font-size: 2.2em;
+            margin-bottom: 20px;
+            font-weight: 600;
+            color: #1a1a1a;
+            letter-spacing: -0.02em;
+        }
+
+        .bci-info p {
+            line-height: 1.8;
+            color: #555;
+            font-size: 1.05em;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Projects Grid */
+        .projects-section {
+            padding: 60px 20px 80px;
+        }
+
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-top: 50px;
+        }
+
+        /* Project Card */
+        .project-card {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 16px;
+            padding: 40px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .project-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .project-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(0, 0, 0, 0.15);
+            background: rgba(255, 255, 255, 0.75);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        .project-card:hover::before {
+            opacity: 1;
+        }
+
+        .project-icon {
+            width: 70px;
+            height: 70px;
+            margin-bottom: 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .project-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: grayscale(100%) contrast(1.05);
+            opacity: 0.85;
+        }
+
+        .project-card h3 {
+            font-size: 1.4em;
+            margin-bottom: 10px;
+            color: #1a1a1a;
+            font-weight: 600;
+            position: relative;
+            z-index: 1;
+        }
+
+        .project-card p {
+            line-height: 1.7;
+            color: #666;
+            margin-bottom: 24px;
+            font-size: 0.95em;
+            position: relative;
+            z-index: 1;
+        }
+
+        .project-status {
+            display: inline-block;
+            background: rgba(0, 0, 0, 0.06);
+            color: #666;
+            padding: 5px 14px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            margin-bottom: 18px;
+            font-weight: 500;
+            position: relative;
+            z-index: 1;
+        }
+
+        .project-link {
+            display: inline-block;
+            background: rgba(26, 26, 26, 0.95);
+            color: white;
+            padding: 11px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+        }
+
+        .project-link:hover {
+            background: rgba(0, 0, 0, 1);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Apple-style Footer */
+        .footer-wrapper {
+            background: #f5f5f7;
+            margin-top: 80px;
+            padding-top: 20px;
+        }
+
+        .footer-note {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px 20px 10px;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #6e6e73;
+        }
+
+        .footer-links {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+            border-top: 1px solid #d2d2d7;
+        }
+
+        .footer-columns {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 40px;
+            margin-bottom: 30px;
+        }
+
+        .footer-column h3 {
+            font-size: 12px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 12px;
+        }
+
+        .footer-column ul {
+            list-style: none;
+        }
+
+        .footer-column ul li {
+            margin-bottom: 10px;
+        }
+
+        .footer-column ul li a {
+            font-size: 12px;
+            color: #424245;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .footer-column ul li a:hover {
+            color: #1d1d1f;
+        }
+
+        .footer-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 20px;
+            border-top: 1px solid #d2d2d7;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .footer-logo {
+            height: 30px;
+            width: auto;
+            opacity: 0.7;
+            margin-right: 20px;
+        }
+
+        .footer-bottom-left {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .footer-bottom-left p {
+            font-size: 12px;
+            color: #6e6e73;
+        }
+
+        .footer-bottom-links {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .footer-bottom-links a {
+            font-size: 12px;
+            color: #424245;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .footer-bottom-links a:hover {
+            color: #1d1d1f;
+        }
+
+        .footer-bottom-right {
+            font-size: 12px;
+            color: #6e6e73;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .footer-columns {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .navbar-content {
+                flex-wrap: wrap;
+                gap: 20px;
+            }
+
+            .navbar-menu {
+                order: 3;
+                width: 100%;
+                justify-content: center;
+                gap: 20px;
+            }
+
+            .dropdown-menu {
+                width: 90vw;
+            }
+
+            .dropdown-columns {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .header p {
+                font-size: 1.05em;
+            }
+
+            .bci-info h2 {
+                font-size: 1.75em;
+            }
+
+            .projects-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .project-card {
+                padding: 32px;
+            }
+
+            .footer-columns {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 30px;
+            }
+
+            .footer-bottom {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .footer-columns {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Subtle animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header, .bci-info, .project-card {
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+
+        .project-card:nth-child(1) { animation-delay: 0.1s; }
+        .project-card:nth-child(2) { animation-delay: 0.2s; }
+        .project-card:nth-child(3) { animation-delay: 0.3s; }
+        .project-card:nth-child(4) { animation-delay: 0.4s; }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="#"><img src="assets/image__2_-removebg-preview.png" alt="APO Technology" class="navbar-logo"></a>
+            
+            <ul class="navbar-menu">
+                <li><a href="about.html">About</a></li>
+                <li>
+                    <a href="#" class="no-click">Learn</a>
+                    <div class="dropdown-menu">
+                        <div class="dropdown-menu-content">
+                            <div class="dropdown-columns">
+                                <div class="dropdown-column">
+                                    <h4>BCI For</h4>
+                                    <ul>
+                                        <li><a href="#">Healthcare</a></li>
+                                        <li><a href="#">Gaming</a></li>
+                                        <li><a href="#">Meditation</a></li>
+                                        <li><a href="#">Accessibility</a></li>
+                                    </ul>
+                                </div>
+                                <div class="dropdown-column">
+                                    <h4>Updates</h4>
+                                    <ul>
+                                        <li><a href="menu/updates/industry/news.html">Industry News</a></li>
+                                        <li><a href="menu/updates/research/documentation.html">Research</a></li>
+                                        <li><a href="#"></a></li>
+                                        
+                                    </ul>
+                                </div>
+                                <div class="dropdown-column">
+                                    <h4>Information</h4>
+                                    <ul>
+                                        <li><a href="menu/information/basics/learn.html">Start here</a></li>
+                                        <li><a href="#">Business</a></li>
+                                        <li><a href="">Documentation</a></li>
+                                        <li><a href="#">FAQ</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+                <li><a href="download.html">Download</a></li>
+            </ul>
+
+            <div class="navbar-cta">
+                <a href="mailto:l.salomon@etudiant.edcparis.edu" class="contact-btn">Contact</a>
+                <a href="emotions.html" class="demo-btn">Test Demo</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <div class="header">
+    
+        <h1>Brain-Computer Interface Projects</h1>
+        <p>Exploring the frontier of human-machine interaction through neurotechnology</p>
+    </div>
+
+    <!-- What is BCI? -->
+    <div class="bci-info">
+        <h2>What is BCI?</h2>
+        <p>
+            Brain-Computer Interface (BCI) is a revolutionary technology that creates a direct communication pathway between the brain and external devices. 
+            By detecting and interpreting neural signals, BCI systems enable users to control computers, applications, and devices using only their thoughts. 
+            This technology has applications in healthcare, gaming, meditation, accessibility, and human augmentation. 
+            Using devices like the Muse EEG headband, we can capture brainwave patterns (Alpha, Beta, Theta, Delta, Gamma) and translate them into meaningful actions and insights.
+        </p>
+    </div>
+
+    <!-- Projects Section -->
+    <div class="projects-section container">
+        <div class="projects-grid">
+            <!-- Muse Device Link -->
+            <div class="project-card">
+                <div class="project-icon">
+                    <img src="assets/originalmuse_3_orig.jpg" alt="Muse Device">
+                </div>
+                <span class="project-status">Hardware</span>
+                <h3>Muse EEG Headband</h3>
+                <p>
+                    The Muse is a research-grade EEG device that captures brainwave activity in real-time. 
+                    It features 4-7 sensors that detect electrical signals from your brain, enabling applications in meditation, 
+                    focus training, and brain-computer interface research.
+                </p>
+                <a href="https://choosemuse.com/" target="_blank" class="project-link">Learn More →</a>
+            </div>
+
+            <!-- Decision Maker -->
+            <div class="project-card">
+                <div class="project-icon">
+                    <img src="assets/WhatsApp_Image_2025-11-30_at_18.54.53__1_-removebg-preview.png" alt="Decision Maker">
+                </div>
+                <span class="project-status">In Development</span>
+                <h3>Decision Maker</h3>
+                <p>
+                    An application featuring a dice controlled by hand tracking via webcam. Currently evolving to identify 
+                    brain patterns associated with hand movements—allowing you to "think" a command instead of physically moving your hand.
+                </p>
+                <a href="decisionmaker.html" class="project-link">Try Demo →</a>
+            </div>
+
+            <!-- Emotion Tracker -->
+            <div class="project-card">
+                <div class="project-icon">
+                    <img src="assets/WhatsApp_Image_2025-11-30_at_18.54.53-removebg-preview.png" alt="Emotion Tracker">
+                </div>
+                <span class="project-status">In Development</span>
+                <h3>Emotion Tracker</h3>
+                <p>
+                    A meditative sphere that visualizes your mental state through color. Purple indicates calm (theta/alpha waves), 
+                    while red shows high concentration (beta waves). Perfect for meditation practice and real-time biofeedback.
+                    Without a Muse device, you can use Demo and see how it reacts with artificial brainwaves.
+                </p>
+                <a href="emotions.html" class="project-link">Launch App →</a>
+            </div>
+
+            <!-- Business Model Presentation -->
+            <div class="project-card">
+                <div class="project-icon">
+                    <img src="assets/WhatsApp_Image_2025-11-30_at_19.38.43-removebg-preview.png" alt="Business Model">
+                </div>
+                <span class="project-status">Presentation</span>
+                <h3>Business Model</h3>
+                <p>
+                    Comprehensive business model presentation developed for the "Idéation pour l'Entreprise" course. 
+                    Explores the commercial viability, market strategy, and value proposition of BCI technology applications.
+                </p>
+                <a href="https://www.canva.com/design/DAG6MXhssM8/F2M_Qkc89z1mWlo7P66RQw/view?utm_content=DAG6MXhssM8&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hc1c31d2b7a" class="project-link">View Presentation →</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Apple-style Footer -->
+    <footer class="footer-wrapper">
+        <div class="footer-note">
+            All projects are currently in development phase. Brain-Computer Interface technology is rapidly evolving, and these applications represent cutting-edge research in neurotechnology.
+            For collaboration opportunities or technical questions, please contact us through the channels listed below.
+        </div>
+
+        <div class="footer-links">
+            <div class="footer-columns">
+                <!-- Column 1: Projects -->
+                <div class="footer-column">
+                    <h3>Projects</h3>
+                    <ul>
+                        <li><a href="hand/index.html">Decision Maker</a></li>
+                        <li><a href="emotions.html">Emotion Tracker</a></li>
+                        <li><a href="https://muse-eeg-app.web.app">EEG Visualizer</a></li>
+                        <li><a href="#">All Projects</a></li>
+                    </ul>
+                </div>
+
+                <!-- Column 2: Technology -->
+                <div class="footer-column">
+                    <h3>Technology</h3>
+                    <ul>
+                        <li><a href="https://choosemuse.com/" target="_blank">Muse Device</a></li>
+                        <li><a href="#">API Documentation</a></li>
+                        <li><a href="#">Developer Guide</a></li>
+                        <li><a href="#">Technical Papers</a></li>
+                        <li><a href="https://github.com/s4lomon">GitHub Repository</a></li>
+                    </ul>
+                </div>
+
+                <!-- Column 3: Resources -->
+                <div class="footer-column">
+                    <h3>Resources</h3>
+                    <ul>
+                        <li><a href="#">Getting Started</a></li>
+                        <li><a href="#">Documentation</a></li>
+                        <li><a href="#">Research Papers</a></li>
+                        <li><a href="#">Blog & News</a></li>
+                        <li><a href="#">FAQ</a></li>
+                    </ul>
+                </div>
+
+                <!-- Column 4: Company -->
+                <div class="footer-column">
+                    <h3>Company</h3>
+                    <ul>
+                        <li><a href="about.html">About APO Technology</a></li>
+                        <li><a href="https://www.canva.com/design/DAG6MXhssM8/F2M_Qkc89z1mWlo7P66RQw/view?utm_content=DAG6MXhssM8&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hc1c31d2b7a">Business Model</a></li>
+                        <li><a href="#">Press Kit</a></li>
+                        <li><a href="#">Contact Us</a></li>
+                    </ul>
+                </div>
+
+                <!-- Column 5: Connect -->
+                <div class="footer-column">
+                    <h3>Connect</h3>
+                    <ul>
+                        <li><a href="www.linkedin.com/in/leticia-salomon" target="_blank">LinkedIn</a></li>
+                        <li><a href="https://github.com/your-username" target="_blank">GitHub</a></li>
+                        <li><a href="mailto:l.salomon@etudiant.edcparis.edu">Email</a></li>
+                        <li><a href="#">Twitter</a></li>
+                        <li><a href="#">Discord Community</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Footer Bottom -->
+            <div class="footer-bottom">
+                <div class="footer-bottom-left">
+                    <img src="assets/image__2_-removebg-preview.png" alt="APO Technology" class="footer-logo">
+                    <p>Copyright © 2025 APO Technology. All rights reserved.</p>
+                    <div class="footer-bottom-links">
+                        <a href="#">Privacy Policy</a>
+                        <a href="#">Terms of Use</a>
+                        <a href="#">Cookie Policy</a>
+                        <a href="#">Legal</a>
+                        <a href="#">Site Map</a>
+                    </div>
+                </div>
+                <div class="footer-bottom-right">
+                    France
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

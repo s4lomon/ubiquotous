@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Understanding the 10-20 EEG System: The Universal Language of Brain-Computer Interfaces | APO Technology</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.8;
+            color: #2c3e50;
+            background: #f8f9fa;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+            padding-bottom: 30px;
+            border-bottom: 3px solid #3498db;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            line-height: 1.3;
+        }
+
+        .meta {
+            color: #7f8c8d;
+            font-size: 0.95em;
+            margin-top: 10px;
+        }
+
+        .meta span {
+            margin: 0 10px;
+        }
+
+        .intro {
+            font-size: 1.2em;
+            color: #34495e;
+            margin: 30px 0;
+            padding: 20px;
+            background: #ecf0f1;
+            border-left: 4px solid #3498db;
+            line-height: 1.8;
+        }
+
+        h2 {
+            font-size: 1.8em;
+            color: #2c3e50;
+            margin: 40px 0 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+
+        h3 {
+            font-size: 1.4em;
+            color: #34495e;
+            margin: 30px 0 15px 0;
+        }
+
+        p {
+            margin: 15px 0;
+            text-align: justify;
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 25px 0;
+        }
+
+        .info-box {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 20px;
+            margin: 25px 0;
+        }
+
+        .diagram {
+            text-align: center;
+            margin: 40px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .diagram img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .diagram-caption {
+            margin-top: 15px;
+            font-style: italic;
+            color: #6c757d;
+            font-size: 0.95em;
+        }
+
+        .code-block {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 20px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+            margin: 20px 0;
+            line-height: 1.6;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .comparison-table th {
+            background: #3498db;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .comparison-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .comparison-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .comparison-table tr:hover {
+            background: #e3f2fd;
+        }
+
+        ul, ol {
+            margin: 15px 0 15px 30px;
+        }
+
+        li {
+            margin: 8px 0;
+        }
+
+        strong {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .key-points {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 20px;
+            margin: 25px 0;
+        }
+
+        .key-points ul {
+            margin-left: 20px;
+        }
+
+        footer {
+            margin-top: 60px;
+            padding-top: 30px;
+            border-top: 2px solid #ecf0f1;
+            text-align: center;
+            color: #7f8c8d;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 30px;
+            background: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .back-link:hover {
+            background: #2980b9;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8em;
+            }
+
+            h2 {
+                font-size: 1.4em;
+            }
+
+            .intro {
+                font-size: 1em;
+            }
+
+            .comparison-table {
+                font-size: 0.85em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Understanding the 10-20 System: The Universal Language of Brain-Computer Interfaces</h1>
+            <div class="meta">
+                <span>📅 Published: December 14, 2024</span>
+                <span>👤 APO Technology Research Team</span>
+                <span>⏱️ 8 min read</span>
+            </div>
+        </header>
+
+        <div class="intro">
+            When working with brain-computer interfaces (BCIs) and electroencephalography (EEG), you'll quickly encounter mysterious labels like AF7, C3, Pz, or T8. These aren't random codes—they're part of an elegant, internationally standardized system that ensures every neuroscientist, researcher, and BCI developer speaks the same language when discussing brain activity.
+        </div>
+
+        <h2>What is the 10-20 System?</h2>
+        
+        <p>The <strong>International 10-20 System</strong>, established in 1958 by Herbert Jasper at the Brussels International EEG Congress, is the global standard for EEG electrode placement. The name comes from the measurement method: electrodes are positioned at intervals of either <strong>10% or 20%</strong> of the total distance across the skull.</p>
+
+        <div class="info-box">
+            <strong>Why does this matter?</strong> The 10-20 system ensures that every EEG recording—whether conducted in Paris, Tokyo, São Paulo, or New York—uses the exact same electrode positions. This standardization enables:
+            <ul>
+                <li>Reproducible research across laboratories worldwide</li>
+                <li>Comparison of results between different studies</li>
+                <li>Universal understanding of brain activity locations</li>
+                <li>Compatibility between different EEG hardware manufacturers</li>
+            </ul>
+        </div>
+
+        <h2>Decoding the Nomenclature</h2>
+
+        <p>Each electrode position is identified by a unique alphanumeric code that reveals its exact location on the scalp. Understanding this code is essential for anyone working with BCIs.</p>
+
+        <h3>The Letter Code - Brain Region</h3>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Letter</th>
+                    <th>Brain Region</th>
+                    <th>Primary Functions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Fp</strong></td>
+                    <td>Frontal Polar (Pre-frontal)</td>
+                    <td>Executive function, decision-making</td>
+                </tr>
+                <tr>
+                    <td><strong>F</strong></td>
+                    <td>Frontal</td>
+                    <td>Motor planning, working memory</td>
+                </tr>
+                <tr>
+                    <td><strong>C</strong></td>
+                    <td>Central</td>
+                    <td>Motor execution, sensory processing</td>
+                </tr>
+                <tr>
+                    <td><strong>T</strong></td>
+                    <td>Temporal</td>
+                    <td>Auditory processing, language</td>
+                </tr>
+                <tr>
+                    <td><strong>P</strong></td>
+                    <td>Parietal</td>
+                    <td>Sensory integration, spatial processing</td>
+                </tr>
+                <tr>
+                    <td><strong>O</strong></td>
+                    <td>Occipital</td>
+                    <td>Visual processing</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>The Number Code - Hemisphere and Position</h3>
+
+        <div class="code-block">
+ODD numbers (1, 3, 5, 7, 9)  = LEFT hemisphere
+EVEN numbers (2, 4, 6, 8, 10) = RIGHT hemisphere
+Letter Z (zero)               = MIDLINE (center)
+
+Examples:
+C3  = Central region, LEFT hemisphere
+C4  = Central region, RIGHT hemisphere
+Cz  = Central region, MIDLINE
+        </div>
+
+        <p>The numbers also indicate lateral distance from the midline. Lower numbers (1, 2) are closer to the center, while higher numbers (7, 8) are more lateral (closer to the ears).</p>
+
+        <div class="diagram">
+            <img src="https://www.researchgate.net/profile/Gianluca-Campillio/publication/280046005/figure/fig3/AS:669476560793618@1536623175824/Extended-10-20-EEG-system-Electrodes-are-identified-with-labels-the-letters-correspond.png" alt="Extended 10-20 EEG System Diagram">
+            <div class="diagram-caption">
+                Figure 1: The Extended 10-20 EEG System showing all standard electrode positions. The motor cortex area (critical for BCI motor imagery) is highlighted in the central region (C3, Cz, C4).
+            </div>
+        </div>
+
+        <h2>Common Electrode Positions Explained</h2>
+
+        <h3>Frontal Electrodes - Attention and Executive Function</h3>
+
+        <p><strong>AF7 / AF8:</strong> Anterior Frontal positions, used extensively in consumer EEG devices like the Muse headband. These positions are excellent for detecting attention levels and frontal lobe activity but do NOT cover the motor cortex.</p>
+
+        <p><strong>AF3 / AF4:</strong> Similar to AF7/AF8 but positioned more medially (closer to the center). These are used in devices like the Emotiv EPOC X. The distance between AF3 and AF7 is approximately 3-4 cm.</p>
+
+        <h3>Central Electrodes - The Motor Cortex (Critical for BCI!)</h3>
+
+        <div class="highlight-box">
+            <strong>⚠️ Critical for Motor Imagery BCIs:</strong>
+            <p>If you're building a BCI for robotic control or motor imagery, you MUST have electrodes covering the motor cortex:</p>
+            <ul>
+                <li><strong>C3:</strong> Left motor cortex (controls RIGHT hand movement)</li>
+                <li><strong>C4:</strong> Right motor cortex (controls LEFT hand movement)</li>
+                <li><strong>Cz:</strong> Central motor cortex (midline)</li>
+            </ul>
+            <p>Consumer devices like Muse do NOT have these electrodes, which is why they cannot effectively decode motor imagery for robotic control.</p>
+        </div>
+
+        <h3>Temporal and Parietal Electrodes</h3>
+
+        <p><strong>T7 / T8:</strong> Temporal positions located above the ears. Previously labeled as T3/T4 in older nomenclature. Important for auditory processing and language functions.</p>
+
+        <p><strong>TP9 / TP10:</strong> Temporal-Parietal positions located BEHIND the ears (over the mastoid bone). Used in Muse headbands. These are different from T7/T8!</p>
+
+        <p><strong>Pz:</strong> Parietal midline position, located on the top-center of the head. Important for attention and sensorimotor integration.</p>
+
+        <h2>Practical Applications: Comparing EEG Devices</h2>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Device</th>
+                    <th>Channel Count</th>
+                    <th>Electrode Positions</th>
+                    <th>Motor Cortex Coverage</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Muse 2/S</strong></td>
+                    <td>4 channels</td>
+                    <td>AF7, AF8, TP9, TP10</td>
+                    <td>❌ NO - Cannot do motor imagery</td>
+                </tr>
+                <tr>
+                    <td><strong>Emotiv EPOC X</strong></td>
+                    <td>14 channels</td>
+                    <td>AF3, AF4, F3, F4, F7, F8, FC5, FC6, T7, T8, P7, P8, O1, O2, Pz</td>
+                    <td>✅ YES - Suitable for motor imagery BCI</td>
+                </tr>
+                <tr>
+                    <td><strong>OpenBCI Cyton</strong></td>
+                    <td>8 channels (expandable to 16)</td>
+                    <td>User-configurable (any 10-20 positions)</td>
+                    <td>✅ YES - If you place electrodes at C3/C4</td>
+                </tr>
+                <tr>
+                    <td><strong>Medical EEG</strong></td>
+                    <td>32-128+ channels</td>
+                    <td>Full 10-20/10-10 system coverage</td>
+                    <td>✅ YES - Complete brain coverage</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Why Universality Matters</h2>
+
+        <div class="key-points">
+            <strong>🌍 The Global Impact:</strong>
+            <ul>
+                <li><strong>AF7 on a Muse = AF7 on medical EEG = AF7 anywhere in the world.</strong> The position is identical regardless of the device or country.</li>
+                <li>Research published in Brazil using C3/C4 electrodes can be replicated in France with the exact same electrode positions.</li>
+                <li>BCI algorithms trained on data from one lab can be tested on data from another lab, knowing the electrode positions are standardized.</li>
+                <li>When you read a scientific paper mentioning "significant activity at electrode Pz," you know EXACTLY where on the head that electrode was located.</li>
+            </ul>
+        </div>
+
+        <h2>Measurement and Proportionality</h2>
+
+        <p>One brilliant aspect of the 10-20 system is that it's <strong>proportional to head size</strong>. The system uses anatomical landmarks (nasion and inion) and calculates electrode positions as percentages of the total distance. This means:</p>
+
+        <ul>
+            <li>A child's small head and an adult's large head will have the same relative electrode positions</li>
+            <li>Individual variations in skull shape are accounted for</li>
+            <li>The system works universally across all human head sizes</li>
+        </ul>
+
+        <p>Typical inter-electrode distances on an average adult head:</p>
+        <ul>
+            <li>Adjacent electrodes: ~5-6 cm apart</li>
+            <li>AF7 to AF8 (across forehead): ~12 cm</li>
+            <li>T7 to T8 (across temporal regions): ~28 cm</li>
+            <li>C3 to C4 (across motor cortex): ~12 cm</li>
+        </ul>
+
+        <h2>Extended Systems: 10-10 and 10-5</h2>
+
+        <p>For higher-resolution EEG recordings, extended versions of the 10-20 system have been developed:</p>
+
+        <ul>
+            <li><strong>10-10 System:</strong> Adds intermediate positions halfway between 10-20 locations, providing ~80 electrode positions</li>
+            <li><strong>10-5 System:</strong> Further subdivides with 5% intervals, enabling 128+ channel high-density EEG</li>
+        </ul>
+
+        <p>These extended systems use the same naming logic and are fully compatible with the original 10-20 standard.</p>
+
+        <h2>For BCI Developers: What You Need to Know</h2>
+
+        <div class="info-box">
+            <h3>Choosing Electrode Positions for Your BCI Project:</h3>
+            
+            <p><strong>For Motor Imagery (robotic control, wheelchair navigation):</strong></p>
+            <ul>
+                <li>Essential: C3, C4, Cz</li>
+                <li>Recommended: FC5, FC6, CP5, CP6</li>
+                <li>Minimum device: 8 channels covering sensorimotor cortex</li>
+            </ul>
+
+            <p><strong>For Attention/Meditation Monitoring:</strong></p>
+            <ul>
+                <li>Essential: AF7, AF8 (or AF3, AF4)</li>
+                <li>Recommended: Pz for attention metrics</li>
+                <li>Minimum device: 4 channels (like Muse)</li>
+            </ul>
+
+            <p><strong>For Visual Processing (SSVEP-based BCI):</strong></p>
+            <ul>
+                <li>Essential: O1, O2, Oz (occipital region)</li>
+                <li>Recommended: P7, P8, Pz</li>
+                <li>Focus on posterior scalp regions</li>
+            </ul>
+        </div>
+
+        <h2>Common Mistakes to Avoid</h2>
+
+        <ol>
+            <li><strong>Assuming all headbands cover motor cortex:</strong> Consumer devices like Muse focus on frontal and temporal regions. Verify electrode positions before choosing hardware for motor imagery projects.</li>
+            
+            <li><strong>Confusing similar positions:</strong> AF7 and AF3 are both frontal left, but positioned ~4cm apart. T7 and TP9 are both on the left side, but T7 is temporal (above ear) while TP9 is behind the ear.</li>
+            
+            <li><strong>Mixing old and new nomenclature:</strong> Older papers may reference T3/T4 (now T7/T8) or T5/T6 (now P7/P8). Be aware of the conversion when reading historical research.</li>
+        </ol>
+
+        <h2>Conclusion</h2>
+
+        <p>The 10-20 system is more than just a naming convention—it's the foundation that enables global collaboration in neuroscience and BCI development. Whether you're building a brain-controlled robotic arm, developing meditation software, or conducting research on neural oscillations, understanding this system is essential.</p>
+
+        <p>When you see "C3" in a research paper or on an EEG device specification, you now know it refers to the left motor cortex, positioned exactly 20% of the distance from the midline to the left preauricular point. This standardization, maintained for over 65 years, continues to be the lingua franca of brain activity measurement.</p>
+
+        <div class="highlight-box">
+            <strong>📚 Further Reading:</strong>
+            <ul>
+                <li><a href="https://en.wikipedia.org/wiki/10–20_system_(EEG)" target="_blank">Wikipedia: 10-20 System (EEG)</a></li>
+                <li><a href="https://www.acns.org/UserFiles/file/EEGGuideline2Electrodenomenclature_final_v1.pdf" target="_blank">American Clinical Neurophysiology Society Guidelines</a></li>
+                <li>Jasper, H. H. (1958). The ten-twenty electrode system of the International Federation. <em>Electroencephalography and Clinical Neurophysiology</em></li>
+            </ul>
+        </div>
+
+        <footer>
+            <p><strong>APO Technology</strong> | Advancing Brain-Computer Interface Research</p>
+            <p>Building accessible, non-invasive BCI solutions for medical applications and accessibility.</p>
+            <a href="index.html" class="back-link">← Back to APO Technology</a>
+        </footer>
+    </div>
+</body>
+</html>

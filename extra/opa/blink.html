@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Muse EEG - Eye Blink Dice</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 p-8">
+    <div class="max-w-7xl mx-auto">
+        
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <div class="flex items-center justify-center gap-3 mb-4">
+                <svg class="w-12 h-12 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                </svg>
+                <h1 class="text-4xl font-bold text-white">Muse EEG - Eye Blink Dice</h1>
+                <div id="connectionIndicator" class="w-4 h-4 rounded-full bg-red-500 animate-pulse"></div>
+            </div>
+            <p class="text-purple-200">Blink to Roll the Dice!</p>
+            <p id="statusText" class="text-sm text-gray-400 mt-2">Ready to connect</p>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex justify-center gap-4 mb-8">
+            <button id="connectBtn" onclick="connectMuse()" 
+                class="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold rounded-full shadow-lg transition-all transform hover:scale-105">
+                🔗 Connect Muse
+            </button>
+            <button id="disconnectBtn" onclick="disconnectMuse()" disabled
+                class="px-8 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold rounded-full shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+                ❌ Disconnect
+            </button>
+            <button id="fakeDataBtn" onclick="toggleFakeData()" 
+                class="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold rounded-full shadow-lg transition-all transform hover:scale-105">
+                🎭 Fake Data Mode
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- Left Column -->
+            <div class="space-y-6">
+                
+                <!-- Dice Display -->
+                <div class="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
+                    <h2 class="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                        <span>🎲</span>
+                        Eye Blink Dice
+                    </h2>
+                    <canvas id="diceCanvas" width="400" height="400" class="w-full rounded-lg bg-gradient-to-br from-gray-800 to-gray-900"></canvas>
+                    
+                    <!-- Blink Info -->
+                    <div class="mt-4 p-4 bg-black/30 rounded-lg">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <div class="text-sm text-gray-300 mb-1">Total Blinks</div>
+                                <div class="text-3xl font-bold text-white" id="blinkCount">0</div>
+                            </div>
+                            <div>
+                                <div class="text-sm text-gray-300 mb-1">Last Blink</div>
+                                <div class="text-3xl font-bold text-purple-400" id="lastBlink">-</div>
+                            </div>
+                        </div>
+                        <div class="mt-3 text-xs text-gray-400">
+                            <div>Threshold: <span id="thresholdValue" class="text-white">150 µV</span></div>
+                            <div>Current AF7: <span id="currentAF7" class="text-white">0 µV</span></div>
+                            <div>Current AF8: <span id="currentAF8" class="text-white">0 µV</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Blink Detection Visualization -->
+                <div class="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
+                    <h2 class="text-xl font-semibold text-white mb-4">Blink Detection Signal</h2>
+                    <canvas id="blinkSignal" width="400" height="200" class="w-full rounded-lg bg-black/30"></canvas>
+                    <div class="mt-2 flex justify-between text-xs text-gray-400">
+                        <span>AF7 (Left Front)</span>
+                        <span>AF8 (Right Front)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="space-y-6">
+                
+                <!-- Channel Voltages -->
+                <div class="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
+                    <h2 class="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="2" fill="none"></polyline>
+                        </svg>
+                        Live EEG Channel Voltages
+                    </h2>
+                    <div id="channelStreams" class="space-y-3"></div>
+                </div>
+
+                <!-- Data Stats -->
+                <div class="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
+                    <h2 class="text-xl font-semibold text-white mb-4">📡 Sensor Status</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="sensor-item">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div id="tp9-status" class="w-3 h-3 rounded-full bg-gray-500"></div>
+                                <span class="text-white font-semibold">TP9</span>
+                                <span class="text-xs text-gray-400">Left Ear</span>
+                            </div>
+                            <div class="text-xs text-gray-400">Packets: <span id="tp9-count" class="text-white">0</span></div>
+                        </div>
+                        <div class="sensor-item">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div id="af7-status" class="w-3 h-3 rounded-full bg-gray-500"></div>
+                                <span class="text-white font-semibold">AF7</span>
+                                <span class="text-xs text-gray-400">Left Front</span>
+                            </div>
+                            <div class="text-xs text-gray-400">Packets: <span id="af7-count" class="text-white">0</span></div>
+                        </div>
+                        <div class="sensor-item">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div id="af8-status" class="w-3 h-3 rounded-full bg-gray-500"></div>
+                                <span class="text-white font-semibold">AF8</span>
+                                <span class="text-xs text-gray-400">Right Front</span>
+                            </div>
+                            <div class="text-xs text-gray-400">Packets: <span id="af8-count" class="text-white">0</span></div>
+                        </div>
+                        <div class="sensor-item">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div id="tp10-status" class="w-3 h-3 rounded-full bg-gray-500"></div>
+                                <span class="text-white font-semibold">TP10</span>
+                                <span class="text-xs text-gray-400">Right Ear</span>
+                            </div>
+                            <div class="text-xs text-gray-400">Packets: <span id="tp10-count" class="text-white">0</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Connection Info -->
+                <div class="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
+                    <h2 class="text-xl font-semibold text-white mb-4">Connection Info</h2>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Device:</span>
+                            <span class="text-white" id="deviceName">Not connected</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Total packets:</span>
+                            <span class="text-white" id="packetCount">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Active channels:</span>
+                            <span class="text-white" id="channelCount">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Panel -->
+        <div class="mt-6 bg-blue-900/20 backdrop-blur-lg rounded-xl p-6 border border-blue-400/20">
+            <div class="flex items-start gap-3">
+                <svg class="w-6 h-6 text-blue-300 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                <div>
+                    <h3 class="text-lg font-semibold text-blue-200 mb-2">Eye Blink Detection System</h3>
+                    <ul class="text-blue-100 space-y-1 text-sm">
+                        <li><strong>Detection Method:</strong> Monitors frontal EEG channels (AF7 & AF8) for voltage spikes</li>
+                        <li><strong>Threshold:</strong> Blinks detected when signal exceeds 250 µV amplitude</li>
+                        <li><strong>Dice Roll:</strong> Each detected blink triggers a random dice spin animation</li>
+                        <li><strong>Why It Works:</strong> Eye blinks create strong electrical artifacts picked up by forehead sensors</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Muse Configuration
+        const MUSE_SERVICE = '0000fe8d-0000-1000-8000-00805f9b34fb';
+        const CONTROL_CHAR = '273e0001-4c4d-454d-96be-f03bac821358';
+        const EEG_CHARS = {
+            TP9: '273e0003-4c4d-454d-96be-f03bac821358',
+            AF7: '273e0004-4c4d-454d-96be-f03bac821358',
+            AF8: '273e0005-4c4d-454d-96be-f03bac821358',
+            TP10: '273e0006-4c4d-454d-96be-f03bac821358'
+        };
+
+        // State
+        let device = null;
+        let server = null;
+        let connected = false;
+        let fakeMode = false;
+        let fakeInterval = null;
+        let packetCount = 0;
+        let channelCount = 0;
+        
+        const eegBuffers = { TP9: [], AF7: [], AF8: [], TP10: [] };
+        const sensorPackets = { TP9: 0, AF7: 0, AF8: 0, TP10: 0 };
+        const sensorLastUpdate = { TP9: 0, AF7: 0, AF8: 0, TP10: 0 };
+        const FFT_SIZE = 256;
+        const SAMPLE_RATE = 256;
+        
+        // Voltage waveform buffers for each channel
+        const channelVoltageBuffers = {
+            TP9: [],
+            AF7: [],
+            AF8: [],
+            TP10: []
+        };
+        const VOLTAGE_BUFFER_LENGTH = 200;
+        
+        let brainwaves = { delta: 0, theta: 0, alpha: 0, beta: 0, gamma: 0 };
+        
+        // Current voltage readings for each channel
+        let currentVoltages = {
+            TP9: 0,
+            AF7: 0,
+            AF8: 0,
+            TP10: 0
+        };
+        
+        // Waveform buffers for streaming visualization
+        const waveformBuffers = {
+            delta: [],
+            theta: [],
+            alpha: [],
+            beta: [],
+            gamma: []
+        };
+        const WAVEFORM_LENGTH = 200;
+
+        // Colors
+        const waveColors = {
+            delta: { r: 107, g: 44, b: 145 },
+            theta: { r: 46, g: 92, b: 184 },
+            alpha: { r: 45, g: 155, b: 78 },
+            beta: { r: 230, g: 126, b: 34 },
+            gamma: { r: 192, g: 57, b: 43 }
+        };
+        
+        // Colors for each channel
+        const channelColors = {
+            TP9: { r: 147, g: 51, b: 234 },  // Purple
+            AF7: { r: 59, g: 130, b: 246 },  // Blue
+            AF8: { r: 249, g: 115, b: 22 },  // Orange
+            TP10: { r: 34, g: 197, b: 94 }   // Green
+        };
+
+        // ====== EYE BLINK DETECTION ======
+        const BLINK_THRESHOLD = 250; // microvolts - increased to reduce false positives
+        const BLINK_REFRACTORY = 600; // milliseconds - longer refractory period
+        let lastBlinkTime = 0;
+        let blinkCount = 0;
+        
+        // Buffers for blink visualization
+        const blinkSignalBuffer = {
+            AF7: [],
+            AF8: []
+        };
+        const BLINK_BUFFER_SIZE = 200;
+
+        // ====== DICE STATE ======
+        let diceValue = 1;
+        let diceRotationX = 0;
+        let diceRotationY = 0;
+        let diceRotationZ = 0;
+        let isSpinning = false;
+        let spinSpeed = 0;
+        let targetRotation = { x: 0, y: 0, z: 0 };
+
+        // Detect eye blink from EEG data with improved filtering
+        function detectBlink(af7Data, af8Data) {
+            const now = Date.now();
+            
+            // Check if we're in refractory period
+            if (now - lastBlinkTime < BLINK_REFRACTORY) {
+                return false;
+            }
+            
+            // Need enough data for proper analysis
+            if (af7Data.length < 50 || af8Data.length < 50) {
+                return false;
+            }
+            
+            // FILTER THE SIGNALS FIRST to reduce baseline voltage
+            const af7Filtered = filterBlinkSignal(af7Data.slice(-50));
+            const af8Filtered = filterBlinkSignal(af8Data.slice(-50));
+            
+            // Get recent window (last 200ms = ~50 samples at 256Hz)
+            const windowSize = 50;
+            const af7Recent = af7Filtered;
+            const af8Recent = af8Filtered;
+            
+            // Calculate baseline (mean of first half of window)
+            const baselineSize = Math.floor(windowSize / 2);
+            const af7Baseline = af7Recent.slice(0, baselineSize).reduce((a, b) => a + b, 0) / baselineSize;
+            const af8Baseline = af8Recent.slice(0, baselineSize).reduce((a, b) => a + b, 0) / baselineSize;
+            
+            // Find peak deviation from baseline in second half
+            const af7Peak = Math.max(...af7Recent.slice(baselineSize).map(v => Math.abs(v - af7Baseline)));
+            const af8Peak = Math.max(...af8Recent.slice(baselineSize).map(v => Math.abs(v - af8Baseline)));
+            
+            // Calculate signal derivative (rate of change) - blinks have sharp rise
+            const af7Derivative = calculateDerivative(af7Recent);
+            const af8Derivative = calculateDerivative(af8Recent);
+            
+            // Update display with current FILTERED values
+            const af7Current = Math.abs(af7Recent[af7Recent.length - 1] - af7Baseline);
+            const af8Current = Math.abs(af8Recent[af8Recent.length - 1] - af8Baseline);
+            document.getElementById('currentAF7').textContent = af7Current.toFixed(1) + ' µV';
+            document.getElementById('currentAF8').textContent = af8Current.toFixed(1) + ' µV';
+            
+            // BLINK CRITERIA (all must be met):
+            // 1. Amplitude exceeds threshold
+            // 2. Sharp rise (high derivative)
+            // 3. Both channels show activity (bilateral)
+            const amplitudeCriterion = (af7Peak > BLINK_THRESHOLD || af8Peak > BLINK_THRESHOLD);
+            const derivativeCriterion = (af7Derivative > 50 || af8Derivative > 50); // Sharp rise - increased threshold
+            const bilateralCriterion = (af7Peak > BLINK_THRESHOLD * 0.5 && af8Peak > BLINK_THRESHOLD * 0.5); // Both channels active
+            
+            if (amplitudeCriterion && derivativeCriterion && bilateralCriterion) {
+                lastBlinkTime = now;
+                blinkCount++;
+                document.getElementById('blinkCount').textContent = blinkCount;
+                document.getElementById('lastBlink').textContent = new Date().toLocaleTimeString();
+                
+                // Trigger dice spin!
+                spinDice();
+                
+                return true;
+            }
+            
+            return false;
+        }
+        
+        // Filter blink signal to remove DC offset and high frequency noise
+        function filterBlinkSignal(data) {
+            if (data.length < 10) return data;
+            
+            // 1. Remove DC offset (mean)
+            const mean = data.reduce((a, b) => a + b, 0) / data.length;
+            let filtered = data.map(v => v - mean);
+            
+            // 2. Simple moving average to smooth high-frequency noise
+            const smoothed = [];
+            const windowSize = 3;
+            for (let i = 0; i < filtered.length; i++) {
+                let sum = 0;
+                let count = 0;
+                for (let j = Math.max(0, i - windowSize); j <= Math.min(filtered.length - 1, i + windowSize); j++) {
+                    sum += filtered[j];
+                    count++;
+                }
+                smoothed.push(sum / count);
+            }
+            
+            return smoothed;
+        }
+        
+        // Apply proper filtering to channel signals for display
+        function applyChannelFilter(data) {
+            if (data.length < 20) return data;
+            
+            // 1. Remove DC offset
+            const mean = data.reduce((a, b) => a + b, 0) / data.length;
+            let filtered = data.map(v => v - mean);
+            
+            // 2. High-pass filter to remove slow drift (< 1 Hz)
+            // This makes baseline nearly flat
+            const highpass = applyHighPassFilter(filtered, 1.0, SAMPLE_RATE);
+            
+            // 3. Low-pass filter to remove high-frequency noise (>40Hz)
+            const alpha = 0.15; // More aggressive smoothing
+            let smoothed = [highpass[0]];
+            for (let i = 1; i < highpass.length; i++) {
+                smoothed.push(smoothed[i-1] + alpha * (highpass[i] - smoothed[i-1]));
+            }
+            
+            return smoothed;
+        }
+        
+        // High-pass filter to remove very low frequencies and DC drift
+        function applyHighPassFilter(data, cutoffFreq, sampleRate) {
+            const RC = 1.0 / (2 * Math.PI * cutoffFreq);
+            const dt = 1.0 / sampleRate;
+            const alpha = RC / (RC + dt);
+            
+            let filtered = [0]; // Start at 0
+            for (let i = 1; i < data.length; i++) {
+                filtered[i] = alpha * (filtered[i-1] + data[i] - data[i-1]);
+            }
+            
+            return filtered;
+        }
+        
+        // Calculate maximum derivative (rate of change) in signal
+        function calculateDerivative(data) {
+            if (data.length < 2) return 0;
+            
+            let maxDerivative = 0;
+            for (let i = 1; i < data.length; i++) {
+                const derivative = Math.abs(data[i] - data[i - 1]);
+                if (derivative > maxDerivative) {
+                    maxDerivative = derivative;
+                }
+            }
+            return maxDerivative;
+        }
+
+        // Spin the dice
+        function spinDice() {
+            if (isSpinning) return; // Already spinning
+            
+            isSpinning = true;
+            spinSpeed = 0.3; // High initial speed
+            
+            // Random new dice value
+            diceValue = Math.floor(Math.random() * 6) + 1;
+            
+            // Random target rotations
+            targetRotation = {
+                x: (Math.random() * 4 + 2) * Math.PI, // 2-6 full rotations
+                y: (Math.random() * 4 + 2) * Math.PI,
+                z: (Math.random() * 4 + 2) * Math.PI
+            };
+        }
+
+        // Update dice animation
+        function updateDice() {
+            if (isSpinning) {
+                // Rotate towards target
+                diceRotationX += spinSpeed;
+                diceRotationY += spinSpeed * 0.7;
+                diceRotationZ += spinSpeed * 0.5;
+                
+                // Decelerate
+                spinSpeed *= 0.95;
+                
+                // Stop when slow enough
+                if (spinSpeed < 0.01) {
+                    isSpinning = false;
+                    spinSpeed = 0;
+                    
+                    // Snap to dice face orientation
+                    snapToFace(diceValue);
+                }
+            }
+        }
+
+        // Snap dice to show specific face
+        function snapToFace(face) {
+            // Dice face orientations (simplified)
+            const faceRotations = {
+                1: { x: 0, y: 0, z: 0 },
+                2: { x: 0, y: Math.PI / 2, z: 0 },
+                3: { x: 0, y: 0, z: Math.PI / 2 },
+                4: { x: 0, y: 0, z: -Math.PI / 2 },
+                5: { x: 0, y: -Math.PI / 2, z: 0 },
+                6: { x: Math.PI, y: 0, z: 0 }
+            };
+            
+            const rot = faceRotations[face];
+            diceRotationX = rot.x;
+            diceRotationY = rot.y;
+            diceRotationZ = rot.z;
+        }
+
+        // Draw 3D dice
+        function drawDice() {
+            const canvas = document.getElementById('diceCanvas');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            
+            // Clear
+            ctx.fillStyle = '#111827';
+            ctx.fillRect(0, 0, w, h);
+            
+            // Update animation
+            updateDice();
+            
+            // Draw dice (simplified 2D projection)
+            const size = 120;
+            const cx = w / 2;
+            const cy = h / 2;
+            
+            // Apply rotation (simplified 2D representation)
+            ctx.save();
+            ctx.translate(cx, cy);
+            
+            // Glow effect
+            ctx.shadowColor = isSpinning ? '#a78bfa' : '#6366f1';
+            ctx.shadowBlur = isSpinning ? 40 : 20;
+            
+            // Main dice body
+            ctx.fillStyle = '#f3f4f6';
+            ctx.fillRect(-size/2, -size/2, size, size);
+            
+            // Outline
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(-size/2, -size/2, size, size);
+            
+            ctx.shadowBlur = 0;
+            
+            // Draw dots for current face
+            ctx.fillStyle = '#1f2937';
+            drawDiceDots(ctx, diceValue, size);
+            
+            ctx.restore();
+            
+            // Draw spinning indicator
+            if (isSpinning) {
+                ctx.fillStyle = '#a78bfa';
+                ctx.font = 'bold 24px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('SPINNING!', cx, h - 30);
+            } else {
+                ctx.fillStyle = '#9ca3af';
+                ctx.font = '18px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(`Value: ${diceValue}`, cx, h - 30);
+            }
+            
+            requestAnimationFrame(drawDice);
+        }
+
+        // Draw dice dots pattern
+        function drawDiceDots(ctx, value, size) {
+            const dotSize = size * 0.12;
+            const offset = size * 0.25;
+            
+            const positions = {
+                1: [[0, 0]],
+                2: [[-offset, -offset], [offset, offset]],
+                3: [[-offset, -offset], [0, 0], [offset, offset]],
+                4: [[-offset, -offset], [offset, -offset], [-offset, offset], [offset, offset]],
+                5: [[-offset, -offset], [offset, -offset], [0, 0], [-offset, offset], [offset, offset]],
+                6: [[-offset, -offset], [offset, -offset], [-offset, 0], [offset, 0], [-offset, offset], [offset, offset]]
+            };
+            
+            const dots = positions[value] || positions[1];
+            dots.forEach(([x, y]) => {
+                ctx.beginPath();
+                ctx.arc(x, y, dotSize, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        // Draw blink detection signal
+        function drawBlinkSignal() {
+            const canvas = document.getElementById('blinkSignal');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            
+            // Clear
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillRect(0, 0, w, h);
+            
+            // Filter the signals before drawing
+            const af7Filtered = blinkSignalBuffer.AF7.length > 10 ? 
+                filterBlinkSignal(blinkSignalBuffer.AF7) : blinkSignalBuffer.AF7;
+            const af8Filtered = blinkSignalBuffer.AF8.length > 10 ? 
+                filterBlinkSignal(blinkSignalBuffer.AF8) : blinkSignalBuffer.AF8;
+            
+            // Draw threshold line (centered since we removed DC offset)
+            const thresholdY = h / 2 - (BLINK_THRESHOLD / 400) * (h / 2);
+            const thresholdYNeg = h / 2 + (BLINK_THRESHOLD / 400) * (h / 2);
+            
+            ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(0, thresholdY);
+            ctx.lineTo(w, thresholdY);
+            ctx.moveTo(0, thresholdYNeg);
+            ctx.lineTo(w, thresholdYNeg);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Draw center line
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, h / 2);
+            ctx.lineTo(w, h / 2);
+            ctx.stroke();
+            
+            // Draw AF7 (blue) - FILTERED
+            if (af7Filtered.length > 1) {
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                
+                af7Filtered.forEach((val, i) => {
+                    const x = (i / BLINK_BUFFER_SIZE) * w;
+                    const y = h / 2 - (val / 400) * (h / 2);
+                    
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                });
+                
+                ctx.stroke();
+            }
+            
+            // Draw AF8 (orange) - FILTERED
+            if (af8Filtered.length > 1) {
+                ctx.strokeStyle = '#f97316';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                
+                af8Filtered.forEach((val, i) => {
+                    const x = (i / BLINK_BUFFER_SIZE) * w;
+                    const y = h / 2 - (val / 400) * (h / 2);
+                    
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                });
+                
+                ctx.stroke();
+            }
+            
+            requestAnimationFrame(drawBlinkSignal);
+        }
+
+        // Toggle fake data mode
+        function toggleFakeData() {
+            fakeMode = !fakeMode;
+            const btn = document.getElementById('fakeDataBtn');
+            
+            if (fakeMode) {
+                btn.textContent = '⏹️ Stop Fake Data';
+                btn.className = 'px-8 py-3 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold rounded-full shadow-lg transition-all transform hover:scale-105';
+                
+                document.getElementById('connectionIndicator').className = 'w-4 h-4 rounded-full bg-yellow-500 animate-pulse';
+                document.getElementById('deviceName').textContent = 'Fake Data Generator';
+                document.getElementById('channelCount').textContent = '4';
+                updateStatus('🎭 Generating fake EEG data...');
+                
+                document.getElementById('connectBtn').disabled = true;
+                
+                startFakeData();
+            } else {
+                btn.textContent = '🎭 Fake Data Mode';
+                btn.className = 'px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold rounded-full shadow-lg transition-all transform hover:scale-105';
+                
+                document.getElementById('connectionIndicator').className = 'w-4 h-4 rounded-full bg-red-500 animate-pulse';
+                document.getElementById('deviceName').textContent = 'Not connected';
+                document.getElementById('channelCount').textContent = '0';
+                updateStatus('Ready to connect');
+                
+                document.getElementById('connectBtn').disabled = false;
+                
+                stopFakeData();
+            }
+        }
+
+        // Generate fake EEG data with simulated blinks
+        function startFakeData() {
+            ['TP9', 'AF7', 'AF8', 'TP10'].forEach(channel => {
+                sensorLastUpdate[channel] = Date.now();
+            });
+            
+            let blinkTimer = 0;
+            
+            fakeInterval = setInterval(() => {
+                const time = Date.now() / 1000;
+                
+                // Generate realistic fake brainwaves
+                brainwaves = {
+                    delta: Math.max(0, Math.min(1, 0.3 + Math.sin(time * 0.5) * 0.2)),
+                    theta: Math.max(0, Math.min(1, 0.4 + Math.sin(time * 0.8) * 0.25)),
+                    alpha: Math.max(0, Math.min(1, 0.5 + Math.sin(time * 1.2) * 0.3)),
+                    beta: Math.max(0, Math.min(1, 0.35 + Math.sin(time * 1.8) * 0.25)),
+                    gamma: Math.max(0, Math.min(1, 0.2 + Math.sin(time * 2.5) * 0.15))
+                };
+                
+                Object.keys(brainwaves).forEach(band => {
+                    waveformBuffers[band].push(brainwaves[band]);
+                    if (waveformBuffers[band].length > WAVEFORM_LENGTH) {
+                        waveformBuffers[band].shift();
+                    }
+                });
+                
+                // Simulate blink every 3-5 seconds
+                blinkTimer++;
+                let af7Val, af8Val;
+                
+                if (blinkTimer > 60 && blinkTimer < 75) {
+                    // Simulate blink spike
+                    af7Val = 200 + Math.random() * 100;
+                    af8Val = 200 + Math.random() * 100;
+                } else if (blinkTimer > 150) {
+                    blinkTimer = 0;
+                    af7Val = Math.random() * 30 - 15;
+                    af8Val = Math.random() * 30 - 15;
+                } else {
+                    // Normal background noise
+                    af7Val = Math.random() * 30 - 15;
+                    af8Val = Math.random() * 30 - 15;
+                }
+                
+                // Generate fake voltages for all channels with mostly quiet baseline
+                const fakeVoltages = {
+                    TP9: Math.sin(time * 0.5) * 5 + Math.random() * 2 - 1,  // Very low amplitude
+                    AF7: af7Val,
+                    AF8: af8Val,
+                    TP10: Math.cos(time * 0.3) * 3 + Math.random() * 2 - 1  // Very low amplitude
+                };
+                
+                // Update channel voltage buffers
+                Object.keys(fakeVoltages).forEach(ch => {
+                    channelVoltageBuffers[ch].push(fakeVoltages[ch]);
+                    if (channelVoltageBuffers[ch].length > VOLTAGE_BUFFER_LENGTH) {
+                        channelVoltageBuffers[ch].shift();
+                    }
+                    
+                    // Update current voltage
+                    if (channelVoltageBuffers[ch].length > 0) {
+                        const recent = channelVoltageBuffers[ch].slice(-10);
+                        currentVoltages[ch] = recent.reduce((a, b) => a + b, 0) / recent.length;
+                    }
+                });
+                
+                // Add to blink buffers
+                blinkSignalBuffer.AF7.push(af7Val);
+                blinkSignalBuffer.AF8.push(af8Val);
+                if (blinkSignalBuffer.AF7.length > BLINK_BUFFER_SIZE) blinkSignalBuffer.AF7.shift();
+                if (blinkSignalBuffer.AF8.length > BLINK_BUFFER_SIZE) blinkSignalBuffer.AF8.shift();
+                
+                // Fake blink detection
+                eegBuffers.AF7.push(af7Val);
+                eegBuffers.AF8.push(af8Val);
+                detectBlink(eegBuffers.AF7, eegBuffers.AF8);
+                
+                packetCount++;
+                document.getElementById('packetCount').textContent = packetCount;
+                
+                ['TP9', 'AF7', 'AF8', 'TP10'].forEach(channel => {
+                    sensorPackets[channel]++;
+                    sensorLastUpdate[channel] = Date.now();
+                    document.getElementById(`${channel.toLowerCase()}-count`).textContent = sensorPackets[channel];
+                });
+                
+                updateChannelVoltages();
+            }, 50);
+        }
+
+        function stopFakeData() {
+            if (fakeInterval) {
+                clearInterval(fakeInterval);
+                fakeInterval = null;
+            }
+            packetCount = 0;
+            document.getElementById('packetCount').textContent = '0';
+            brainwaves = { delta: 0, theta: 0, alpha: 0, beta: 0, gamma: 0 };
+            currentVoltages = { TP9: 0, AF7: 0, AF8: 0, TP10: 0 };
+            updateChannelVoltages();
+        }
+
+        // Connect to Muse
+        async function connectMuse() {
+            if (fakeMode) {
+                updateStatus('⚠️ Stop fake data mode first!');
+                return;
+            }
+            
+            try {
+                updateStatus('🔍 Searching for Muse...');
+                
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [{ services: [MUSE_SERVICE] }],
+                    optionalServices: [MUSE_SERVICE]
+                });
+
+                document.getElementById('deviceName').textContent = device.name || 'Muse Device';
+                device.addEventListener('gattserverdisconnected', onDisconnected);
+
+                updateStatus('📡 Connecting...');
+                server = await device.gatt.connect();
+
+                updateStatus('🔧 Getting service...');
+                const service = await server.getPrimaryService(MUSE_SERVICE);
+
+                updateStatus('▶️ Starting EEG stream...');
+                try {
+                    const control = await service.getCharacteristic(CONTROL_CHAR);
+                    await control.writeValue(new Uint8Array([0x02, 0x64, 0x0a]));
+                    await new Promise(r => setTimeout(r, 100));
+                    await control.writeValue(new Uint8Array([0x02, 0x73, 0x0a]));
+                } catch (e) {
+                    console.log('Control commands:', e);
+                }
+
+                channelCount = 0;
+                for (const [name, uuid] of Object.entries(EEG_CHARS)) {
+                    try {
+                        const char = await service.getCharacteristic(uuid);
+                        await char.startNotifications();
+                        char.addEventListener('characteristicvaluechanged', (e) => handleEEG(e, name));
+                        channelCount++;
+                    } catch (e) {
+                        console.log(`${name} failed:`, e);
+                    }
+                }
+
+                document.getElementById('channelCount').textContent = channelCount;
+                
+                if (channelCount > 0) {
+                    connected = true;
+                    updateStatus('✅ Streaming live EEG data! Blink to roll the dice!');
+                    document.getElementById('connectionIndicator').className = 'w-4 h-4 rounded-full bg-green-500 animate-pulse';
+                    document.getElementById('connectBtn').disabled = true;
+                    document.getElementById('disconnectBtn').disabled = false;
+                } else {
+                    throw new Error('No channels available');
+                }
+
+            } catch (error) {
+                updateStatus('❌ ' + error.message);
+                console.error(error);
+            }
+        }
+
+        // Handle EEG data
+        function handleEEG(event, channel) {
+            const value = event.target.value;
+            packetCount++;
+            sensorPackets[channel]++;
+            sensorLastUpdate[channel] = Date.now();
+            
+            document.getElementById('packetCount').textContent = packetCount;
+            document.getElementById(`${channel.toLowerCase()}-count`).textContent = sensorPackets[channel];
+            document.getElementById(`${channel.toLowerCase()}-status`).className = 'w-3 h-3 rounded-full bg-green-500 animate-pulse';
+
+            // Parse samples
+            const samples = [];
+            for (let i = 0; i < value.byteLength - 1; i += 3) {
+                if (i + 2 < value.byteLength) {
+                    const s1 = (value.getUint8(i) << 4) | (value.getUint8(i + 1) >> 4);
+                    const s2 = ((value.getUint8(i + 1) & 0x0F) << 8) | value.getUint8(i + 2);
+                    samples.push(s1, s2);
+                }
+            }
+
+            // Convert to microvolts and buffer
+            samples.forEach(sample => {
+                const voltage = (sample - 2048) * 0.48828125;
+                eegBuffers[channel].push(voltage);
+                
+                // Add to channel voltage buffer for visualization
+                channelVoltageBuffers[channel].push(voltage);
+                if (channelVoltageBuffers[channel].length > VOLTAGE_BUFFER_LENGTH) {
+                    channelVoltageBuffers[channel].shift();
+                }
+                
+                // Add to blink signal buffer for AF7 and AF8 with filtering
+                if (channel === 'AF7' || channel === 'AF8') {
+                    blinkSignalBuffer[channel].push(voltage);
+                    if (blinkSignalBuffer[channel].length > BLINK_BUFFER_SIZE) {
+                        blinkSignalBuffer[channel].shift();
+                    }
+                }
+            });
+            
+            // After processing all samples, apply filtering and update current voltage
+            if (channelVoltageBuffers[channel].length > 50) {
+                const filtered = applyChannelFilter(channelVoltageBuffers[channel]);
+                const recent = filtered.slice(-10);
+                currentVoltages[channel] = recent.reduce((a, b) => a + b, 0) / recent.length;
+            }
+
+            if (eegBuffers[channel].length > FFT_SIZE * 2) {
+                eegBuffers[channel] = eegBuffers[channel].slice(-FFT_SIZE);
+            }
+
+            // Detect blinks from frontal channels
+            if ((channel === 'AF7' || channel === 'AF8') && eegBuffers.AF7.length > 50 && eegBuffers.AF8.length > 50) {
+                detectBlink(eegBuffers.AF7, eegBuffers.AF8);
+            }
+
+            if (channel === 'AF7' && eegBuffers[channel].length >= FFT_SIZE) {
+                processBrainwaves();
+            }
+            
+            // Update channel voltage display
+            updateChannelVoltages();
+        }
+
+        // Monitor sensor health
+        setInterval(() => {
+            const now = Date.now();
+            ['TP9', 'AF7', 'AF8', 'TP10'].forEach(channel => {
+                const timeSince = now - sensorLastUpdate[channel];
+                const statusEl = document.getElementById(`${channel.toLowerCase()}-status`);
+                
+                if (timeSince > 2000) {
+                    statusEl.className = 'w-3 h-3 rounded-full bg-red-500';
+                } else if (timeSince > 500) {
+                    statusEl.className = 'w-3 h-3 rounded-full bg-yellow-500';
+                } else if (connected || fakeMode) {
+                    statusEl.className = 'w-3 h-3 rounded-full bg-green-500 animate-pulse';
+                }
+            });
+        }, 500);
+
+        // Process brainwaves
+        function processBrainwaves() {
+            const channels = Object.values(eegBuffers).filter(b => b.length >= FFT_SIZE);
+            if (channels.length === 0) return;
+
+            const avgBuffer = new Array(FFT_SIZE).fill(0);
+            channels.forEach(buffer => {
+                for (let i = 0; i < FFT_SIZE; i++) {
+                    avgBuffer[i] += buffer[buffer.length - FFT_SIZE + i];
+                }
+            });
+            avgBuffer.forEach((val, i) => avgBuffer[i] /= channels.length);
+
+            const fft = performFFT(avgBuffer);
+            
+            const delta = getBandPower(fft, 0.5, 4);
+            const theta = getBandPower(fft, 4, 8);
+            const alpha = getBandPower(fft, 8, 13);
+            const beta = getBandPower(fft, 13, 30);
+            const gamma = getBandPower(fft, 30, 100);
+
+            const total = delta + theta + alpha + beta + gamma;
+            if (total > 0) {
+                brainwaves = {
+                    delta: delta / total,
+                    theta: theta / total,
+                    alpha: alpha / total,
+                    beta: beta / total,
+                    gamma: gamma / total
+                };
+                
+                Object.keys(brainwaves).forEach(band => {
+                    waveformBuffers[band].push(brainwaves[band]);
+                    if (waveformBuffers[band].length > WAVEFORM_LENGTH) {
+                        waveformBuffers[band].shift();
+                    }
+                });
+            }
+
+            updateWaveBands();
+        }
+
+        function performFFT(buffer) {
+            const N = buffer.length;
+            const result = new Array(N / 2).fill(0);
+            
+            for (let k = 0; k < N / 2; k++) {
+                let real = 0, imag = 0;
+                for (let n = 0; n < N; n++) {
+                    const angle = -2 * Math.PI * k * n / N;
+                    real += buffer[n] * Math.cos(angle);
+                    imag += buffer[n] * Math.sin(angle);
+                }
+                result[k] = Math.sqrt(real * real + imag * imag) / N;
+            }
+            return result;
+        }
+
+        function getBandPower(fft, minFreq, maxFreq) {
+            const binSize = SAMPLE_RATE / FFT_SIZE;
+            const minBin = Math.floor(minFreq / binSize);
+            const maxBin = Math.ceil(maxFreq / binSize);
+            
+            let power = 0;
+            for (let i = minBin; i <= maxBin && i < fft.length; i++) {
+                power += fft[i] * fft[i];
+            }
+            return power || 0.0001;
+        }
+
+        function updateChannelVoltages() {
+            const container = document.getElementById('channelStreams');
+            
+            // Don't update if not connected and not in fake mode
+            if (!connected && !fakeMode) {
+                container.innerHTML = '<div class="text-gray-400 text-center py-4">No data - connect Muse or enable fake data mode</div>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            const channelNames = ['TP9', 'AF7', 'AF8', 'TP10'];
+            const channelLabels = {
+                TP9: 'Left Ear',
+                AF7: 'Left Forehead',
+                AF8: 'Right Forehead',
+                TP10: 'Right Ear'
+            };
+            
+            channelNames.forEach(channel => {
+                const color = channelColors[channel];
+                const voltage = currentVoltages[channel];
+                
+                const div = document.createElement('div');
+                div.className = 'space-y-1';
+                div.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full" style="background: rgb(${color.r}, ${color.g}, ${color.b})"></div>
+                            <span class="text-white font-semibold text-sm">${channel}</span>
+                            <span class="text-xs text-gray-400">${channelLabels[channel]}</span>
+                        </div>
+                        <span class="text-white font-mono text-sm">${voltage.toFixed(2)} µV</span>
+                    </div>
+                    <canvas id="channel-${channel}" width="400" height="40" class="w-full rounded" style="background: rgba(0,0,0,0.3)"></canvas>
+                `;
+                container.appendChild(div);
+                
+                drawChannelWaveform(channel, color);
+            });
+        }
+
+        function drawChannelWaveform(channel, color) {
+            const canvas = document.getElementById(`channel-${channel}`);
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            const rawData = channelVoltageBuffers[channel];
+            
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillRect(0, 0, w, h);
+            
+            if (rawData.length < 2) return;
+            
+            // Apply aggressive filtering for cleaner display
+            const data = rawData.length > 20 ? applyChannelFilter(rawData) : rawData;
+            
+            // Draw center line (zero baseline)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, h / 2);
+            ctx.lineTo(w, h / 2);
+            ctx.stroke();
+            
+            // Draw threshold guides at ±50 µV
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.setLineDash([2, 2]);
+            ctx.beginPath();
+            ctx.moveTo(0, h / 4);
+            ctx.lineTo(w, h / 4);
+            ctx.moveTo(0, 3 * h / 4);
+            ctx.lineTo(w, 3 * h / 4);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Draw waveform
+            ctx.strokeStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            // Scale: ±100 µV range (signals outside this will clip)
+            const scale = 100;
+            for (let i = 0; i < data.length; i++) {
+                const x = (i / VOLTAGE_BUFFER_LENGTH) * w;
+                // Clamp values to prevent extreme excursions
+                const clampedVal = Math.max(-scale, Math.min(scale, data[i]));
+                const y = h / 2 - (clampedVal / scale) * (h / 2);
+                
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            
+            ctx.stroke();
+            
+            // Draw current value indicator
+            if (data.length > 0) {
+                const lastVal = Math.max(-scale, Math.min(scale, data[data.length - 1]));
+                const lastY = h / 2 - (lastVal / scale) * (h / 2);
+                
+                ctx.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+                ctx.beginPath();
+                ctx.arc(w - 5, lastY, 4, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Glow effect
+                ctx.shadowColor = `rgb(${color.r}, ${color.g}, ${color.b})`;
+                ctx.shadowBlur = 10;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        function updateWaveBands() {
+            // Kept for compatibility but not used in this version
+        }
+
+        async function disconnectMuse() {
+            if (device && device.gatt.connected) {
+                await device.gatt.disconnect();
+            }
+            if (fakeMode) {
+                toggleFakeData();
+            }
+        }
+
+        function onDisconnected() {
+            connected = false;
+            updateStatus('⚠️ Disconnected');
+            document.getElementById('connectionIndicator').className = 'w-4 h-4 rounded-full bg-red-500 animate-pulse';
+            document.getElementById('connectBtn').disabled = fakeMode;
+            document.getElementById('disconnectBtn').disabled = true;
+            if (!fakeMode) {
+                document.getElementById('deviceName').textContent = 'Not connected';
+            }
+        }
+
+        function updateStatus(msg) {
+            document.getElementById('statusText').textContent = msg;
+        }
+
+        if (!navigator.bluetooth) {
+            updateStatus('❌ Web Bluetooth not supported. Use Chrome, Edge, or Opera.');
+            document.getElementById('connectBtn').disabled = true;
+        }
+
+        // Initialize threshold display
+        document.getElementById('thresholdValue').textContent = BLINK_THRESHOLD + ' µV';
+
+        // Start animations
+        drawDice();
+        drawBlinkSignal();
+    </script>
+</body>
+</html>

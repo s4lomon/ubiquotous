@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About - APO Technology</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: #ffffff;
+            color: #1a1a1a;
+            line-height: 1.7;
+            min-height: 100vh;
+        }
+
+        /* Main Content */
+        .container {
+            max-width: 680px;
+            margin: 0 auto;
+            padding: 100px 30px 120px;
+            width: 100%;
+        }
+
+        /* Logo section */
+        .logo-section {
+            margin-bottom: 60px;
+            text-align: center;
+        }
+
+        .main-logo {
+            width: 120px;
+            opacity: 0.85;
+            margin-bottom: 30px;
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 2.5em;
+            font-weight: 600;
+            margin-bottom: 40px;
+            letter-spacing: -0.02em;
+            color: #1a1a1a;
+        }
+
+        .intro {
+            font-size: 1.2em;
+            line-height: 1.8;
+            margin-bottom: 50px;
+            color: #2a2a2a;
+        }
+
+        h2 {
+            font-size: 1.6em;
+            font-weight: 600;
+            margin-top: 60px;
+            margin-bottom: 25px;
+            letter-spacing: -0.01em;
+            color: #1a1a1a;
+        }
+
+        p {
+            font-size: 1.05em;
+            line-height: 1.8;
+            margin-bottom: 20px;
+            color: #3a3a3a;
+        }
+
+        /* Divider */
+        .divider {
+            width: 60px;
+            height: 2px;
+            background: #1a1a1a;
+            margin: 60px 0;
+        }
+
+        /* Focus areas */
+        .focus-list {
+            margin: 30px 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .focus-list li {
+            padding: 15px 0;
+            font-size: 1.05em;
+            line-height: 1.7;
+            color: #3a3a3a;
+            position: relative;
+            padding-left: 30px;
+        }
+
+        .focus-list li::before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: #1a1a1a;
+            font-weight: 600;
+        }
+
+        /* Connect section */
+        .connect-section {
+            margin-top: 80px;
+            padding-top: 40px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .connect-section h2 {
+            margin-top: 0;
+            font-size: 1.4em;
+        }
+
+        .connect-links {
+            display: flex;
+            gap: 20px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+
+        .connect-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border: 1px solid rgba(0, 0, 0, 0.15);
+            border-radius: 8px;
+            text-decoration: none;
+            color: #1a1a1a;
+            font-weight: 500;
+            font-size: 0.95em;
+            transition: all 0.2s ease;
+        }
+
+        .connect-link:hover {
+            background: rgba(0, 0, 0, 0.03);
+            border-color: rgba(0, 0, 0, 0.25);
+        }
+
+        /* Quote/callout */
+        .callout {
+            background: #f8f8f8;
+            padding: 30px;
+            border-radius: 8px;
+            margin: 40px 0;
+            border-left: 3px solid #1a1a1a;
+        }
+
+        .callout p {
+            margin: 0;
+            font-size: 1.05em;
+            color: #2a2a2a;
+            font-style: italic;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .container {
+                max-width: 100%;
+                padding: 80px 40px 100px;
+            }
+
+            .footer-columns {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 60px 30px 80px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            .intro {
+                font-size: 1.1em;
+            }
+
+            h2 {
+                font-size: 1.4em;
+            }
+
+            p {
+                font-size: 1em;
+            }
+
+            .footer-columns {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 30px;
+            }
+
+            .footer-bottom {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 50px 20px 70px;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .main-logo {
+                width: 100px;
+            }
+
+            .callout {
+                padding: 25px 20px;
+            }
+
+            .footer-columns {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .container {
+                padding: 40px 15px 60px;
+            }
+
+            h1 {
+                font-size: 1.6em;
+            }
+
+            h2 {
+                font-size: 1.3em;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .container > * {
+            animation: fadeIn 0.6s ease-out forwards;
+            opacity: 0;
+        }
+
+        .logo-section { animation-delay: 0s; }
+        h1 { animation-delay: 0.1s; }
+        .intro { animation-delay: 0.2s; }
+        .divider { animation-delay: 0.3s; }
+        h2:nth-of-type(1) { animation-delay: 0.4s; }
+        p:nth-of-type(2) { animation-delay: 0.5s; }
+
+        /* Apple-style Footer */
+        .footer-wrapper {
+            background: #f5f5f7;
+            margin-top: 80px;
+            padding-top: 20px;
+        }
+
+        .footer-note {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px 20px 10px;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #6e6e73;
+        }
+
+        .footer-links {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+            border-top: 1px solid #d2d2d7;
+        }
+
+        .footer-columns {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 40px;
+            margin-bottom: 30px;
+        }
+
+        .footer-column h3 {
+            font-size: 12px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 12px;
+        }
+
+        .footer-column ul {
+            list-style: none;
+        }
+
+        .footer-column ul li {
+            margin-bottom: 10px;
+        }
+
+        .footer-column ul li a {
+            font-size: 12px;
+            color: #424245;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .footer-column ul li a:hover {
+            color: #1d1d1f;
+        }
+
+        .footer-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 20px;
+            border-top: 1px solid #d2d2d7;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .footer-logo {
+            height: 30px;
+            width: auto;
+            opacity: 0.7;
+            margin-right: 20px;
+        }
+
+        .footer-bottom-left {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .footer-bottom-left p {
+            font-size: 12px;
+            color: #6e6e73;
+            margin: 0;
+        }
+
+        .footer-bottom-links {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .footer-bottom-links a {
+            font-size: 12px;
+            color: #424245;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .footer-bottom-links a:hover {
+            color: #1d1d1f;
+        }
+
+        .footer-bottom-right {
+            font-size: 12px;
+            color: #6e6e73;
+        }
+    </style>
+</head>
+<body>
+    <!-- Main Content -->
+    <div class="container">
+        <div class="logo-section">
+            <img src="assets/image__2_-removebg-preview.png" alt="APO Technology" class="main-logo">
+        </div>
+
+        <h1>Building the future of human-computer interaction</h1>
+
+        <p class="intro">
+            Building applications for brain-computer interface devices that make technology more intuitive, 
+            accessible, and aligned with human cognition.
+        </p>
+
+        <div class="divider"></div>
+
+        <h2>What's being built</h2>
+        
+        <p>
+            Brain-computer interfaces represent a fundamental shift in how humans interact with technology. 
+            Instead of adapting ourselves to the limitations of keyboards, mice, and touchscreens, we can 
+            create systems that understand and respond to our natural cognitive patterns.
+        </p>
+
+        <p>
+            Currently developing applications for existing BCI devices that focus on practical, 
+            everyday automation. The goal is to make technology that fades into the background—tools that 
+            work with your natural thought processes rather than interrupting them.
+        </p>
+
+        <div class="callout">
+            <p>
+                "The best interface is the one you don't notice. Building toward a future where 
+                interacting with technology is as natural as thinking."
+            </p>
+        </div>
+
+        <h2>Current focus</h2>
+
+        <ul class="focus-list">
+            <li>
+                <strong>Task automation:</strong> Applications that let you control smartphones and computers 
+                through neural patterns, automating repetitive daily tasks without manual input.
+            </li>
+            <li>
+                <strong>Emotional intelligence:</strong> Systems that recognize mental states and emotional 
+                patterns, providing contextually relevant support and guidance.
+            </li>
+            <li>
+                <strong>AI integration:</strong> Combining BCI technology with large language models to create 
+                assistants that understand both what you're doing and how you're feeling, offering genuinely 
+                helpful decision support.
+            </li>
+            <li>
+                <strong>Accessibility:</strong> Making these tools available and useful for people with different 
+                abilities and needs, particularly those for whom traditional interfaces are challenging.
+            </li>
+        </ul>
+
+        <h2>The path forward</h2>
+
+        <p>
+            This technology is still early. Today's BCI devices are like personal computers in the 1970s—
+            functional but limited, promising but not yet fully realized. The work focuses on bridging that gap 
+            between what's technically possible and what's practically useful.
+        </p>
+
+        <p>
+            The applications being built today are steps toward more ambitious goals: systems that can 
+            predict your needs, interfaces that adapt to your cognitive state, and tools that genuinely 
+            augment human capability rather than just digitizing existing processes.
+        </p>
+
+        <h2>Looking for collaborators</h2>
+
+        <p>
+            Looking to connect with developers interested in BCI technology, neuroscience, or human-computer interaction. 
+            This field needs people who think carefully about how technology can serve 
+            human needs rather than the other way around.
+        </p>
+
+        <p>
+            Also interested in partnerships with companies working on adjacent problems—whether that's 
+            hardware development, AI research, accessibility technology, or applications in healthcare and 
+            wellness.
+        </p>
+
+    </div>
+
+    <!-- Apple-style Footer -->
+    <footer class="footer-wrapper">
+        <div class="footer-note">
+            All projects are currently in development phase. Brain-Computer Interface technology is rapidly evolving, and these applications represent cutting-edge research in neurotechnology.
+            For collaboration opportunities or technical questions, please contact through the channels listed below.
+        </div>
+
+        <div class="footer-links">
+            <div class="footer-columns">
+                <!-- Column 1: Projects -->
+                <div class="footer-column">
+                    <h3>Projects</h3>
+                    <ul>
+                        <li><a href="decisionmaker.html">Decision Maker</a></li>
+                        <li><a href="emotions.html">Emotion Tracker</a></li>
+                        <li><a href="https://muse-eeg-app.web.app">EEG Visualizer</a></li>
+                        <li><a href="index.html">All Projects</a></li>
+                    </ul>
+                </div>
+
+                <!-- Column 2: Technology -->
+                <div class="footer-column">
+                    <h3>Technology</h3>
+                    <ul>
+                        <li><a href="https://choosemuse.com/" target="_blank">Muse Device</a></li>
+                        <li><a href="learn.html">Learn BCI</a></li>
+                        <li><a href="download.html">Download</a></li>
+                        <li><a href="https://github.com/s4lomon">GitHub Repository</a></li>
+                    </ul>
+                </div>
+
+                <!-- Column 3: Resources -->
+                <div class="footer-column">
+                    <h3>Resources</h3>
+                    <ul>
+                        <li><a href="learn.html">Getting Started</a></li>
+                        <li><a href="learn.html">Documentation</a></li>
+                        <li><a href="index.html">Research</a></li>
+                        <li><a href="about.html">About</a></li>
+                    </ul>
+                </div>
+
+                <!-- Column 4: Company -->
+                <div class="footer-column">
+                    <h3>Company</h3>
+                    <ul>
+                        <li><a href="about.html">About APO Technology</a></li>
+                        <li><a href="https://www.canva.com/design/DAG6MXhssM8/F2M_Qkc89z1mWlo7P66RQw/view?utm_content=DAG6MXhssM8&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hc1c31d2b7a">Business Model</a></li>
+                        <li><a href="mailto:l.salomon@etudiant.edcparis.edu">Contact</a></li>
+                    </ul>
+                </div>
+
+                <!-- Column 5: Connect -->
+                <div class="footer-column">
+                    <h3>Connect</h3>
+                    <ul>
+                        <li><a href="https://www.linkedin.com/in/leticia-salomon" target="_blank">LinkedIn</a></li>
+                        <li><a href="https://github.com/s4lomon" target="_blank">GitHub</a></li>
+                        <li><a href="mailto:l.salomon@etudiant.edcparis.edu">Email</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Footer Bottom -->
+            <div class="footer-bottom">
+                <div class="footer-bottom-left">
+                    <img src="assets/image__2_-removebg-preview.png" alt="APO Technology" class="footer-logo">
+                    <p>Copyright © 2025 APO Technology. All rights reserved.</p>
+                    <div class="footer-bottom-links">
+                        <a href="#">Privacy Policy</a>
+                        <a href="#">Terms of Use</a>
+                        <a href="#">Legal</a>
+                    </div>
+                </div>
+                <div class="footer-bottom-right">
+                    France
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

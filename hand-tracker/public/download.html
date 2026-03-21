@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APO Mind Control - Coming Soon</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Navigation Bar */
+        .navbar {
+            background: rgba(26, 26, 26, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .navbar-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .navbar-logo {
+            height: 60px;
+            width: auto;
+            opacity: 0.9;
+            transition: opacity 0.3s ease;
+            filter: brightness(0) invert(1);
+        }
+
+        .navbar-logo:hover {
+            opacity: 1;
+        }
+
+        .navbar-menu {
+            display: flex;
+            gap: 32px;
+            list-style: none;
+            align-items: center;
+            margin: 0 auto;
+        }
+
+        .navbar-menu li a {
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: opacity 0.2s ease;
+            letter-spacing: -0.01em;
+        }
+
+        .navbar-menu li a:hover {
+            opacity: 0.7;
+        }
+
+        .navbar-cta {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .navbar-cta a {
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            padding: 10px 20px;
+            border-radius: 8px;
+        }
+
+        .navbar-cta .contact-btn {
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: transparent;
+        }
+
+        .navbar-cta .contact-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .navbar-cta .demo-btn {
+            background: #ffffff;
+            color: #1a1a1a;
+        }
+
+        .navbar-cta .demo-btn:hover {
+            background: #f0f0f0;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+        }
+
+        .content-wrapper {
+            max-width: 800px;
+            text-align: center;
+        }
+
+        /* App Icon Placeholder */
+        .app-icon {
+            width: 180px;
+            height: 180px;
+            margin: 0 auto 40px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .app-icon::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+        }
+
+        .icon-placeholder {
+            width: 100px;
+            height: 100px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .icon-placeholder svg {
+            width: 100%;
+            height: 100%;
+            opacity: 0.8;
+        }
+
+        /* Badge */
+        .status-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 30px;
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 3.5em;
+            font-weight: 700;
+            margin-bottom: 20px;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #ffffff 0%, #a0a0a0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 1.3em;
+            color: #b0b0b0;
+            margin-bottom: 40px;
+            font-weight: 400;
+        }
+
+        /* Project Info Box */
+        .project-info {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 50px auto;
+            max-width: 700px;
+            text-align: left;
+        }
+
+        .project-info h2 {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .project-info p {
+            font-size: 1.05em;
+            line-height: 1.8;
+            color: #c0c0c0;
+            margin-bottom: 15px;
+        }
+
+        .project-info .highlight {
+            color: #ffffff;
+            font-weight: 500;
+        }
+
+        /* Features List */
+        .features-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .feature-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .feature-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+            opacity: 0.7;
+        }
+
+        .feature-item h3 {
+            font-size: 0.95em;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+
+        .feature-item p {
+            font-size: 0.85em;
+            color: #909090;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        /* Disclaimer */
+        .disclaimer {
+            background: rgba(255, 200, 0, 0.1);
+            border: 1px solid rgba(255, 200, 0, 0.3);
+            border-radius: 12px;
+            padding: 20px 30px;
+            margin: 40px auto 20px;
+            max-width: 700px;
+        }
+
+        .disclaimer-icon {
+            display: inline-block;
+            font-size: 1.5em;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        .disclaimer p {
+            display: inline;
+            color: #ffc107;
+            font-size: 0.95em;
+            font-weight: 500;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            margin-top: 50px;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 14px 32px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .cta-primary {
+            background: #ffffff;
+            color: #1a1a1a;
+        }
+
+        .cta-primary:hover {
+            background: #f0f0f0;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(255, 255, 255, 0.2);
+        }
+
+        .cta-secondary {
+            background: transparent;
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .cta-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Timeline Hint */
+        .timeline {
+            margin-top: 60px;
+            color: #808080;
+            font-size: 0.9em;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5em;
+            }
+
+            .subtitle {
+                font-size: 1.1em;
+            }
+
+            .project-info {
+                padding: 30px 25px;
+            }
+
+            .features-list {
+                grid-template-columns: 1fr;
+            }
+
+            .app-icon {
+                width: 140px;
+                height: 140px;
+            }
+
+            .icon-placeholder {
+                width: 80px;
+                height: 80px;
+            }
+
+            .navbar-content {
+                flex-wrap: wrap;
+                gap: 20px;
+            }
+
+            .navbar-menu {
+                order: 3;
+                width: 100%;
+                justify-content: center;
+                gap: 20px;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .content-wrapper > * {
+            animation: fadeInUp 0.8s ease-out forwards;
+        }
+
+        .app-icon {
+            animation: fadeInUp 0.8s ease-out forwards, float 3s ease-in-out infinite;
+        }
+
+        .status-badge { animation-delay: 0.1s; }
+        h1 { animation-delay: 0.2s; }
+        .subtitle { animation-delay: 0.3s; }
+        .project-info { animation-delay: 0.4s; }
+        .disclaimer { animation-delay: 0.5s; }
+        .cta-section { animation-delay: 0.6s; }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="index.html"><img src="assets/image__2_-removebg-preview.png" alt="APO Technology" class="navbar-logo"></a>
+            
+            <ul class="navbar-menu">
+                <li><a href="index.html#about">About</a></li>
+                <li><a href="index.html#learn">Learn</a></li>
+                <li><a href="download.html">Download</a></li>
+            </ul>
+
+            <div class="navbar-cta">
+                <a href="mailto:l.salomon@etudiant.edcparis.edu" class="contact-btn">Contact</a>
+                <a href="emotions.html" class="demo-btn">Test Demo</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="content-wrapper">
+            <!-- App Icon -->
+            <div class="app-icon">
+                <div class="icon-placeholder">
+                    <!-- Brain + Phone Icon SVG -->
+                    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Brain outline -->
+                        <path d="M50 20C35 20 25 30 25 40C25 45 27 49 30 52C28 54 27 57 27 60C27 65 30 69 35 70C35 75 38 78 42 78H58C62 78 65 75 65 70C70 69 73 65 73 60C73 57 72 54 70 52C73 49 75 45 75 40C75 30 65 20 50 20Z" 
+                              stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>
+                        <!-- Brain details -->
+                        <path d="M45 30C43 32 42 35 42 38M55 30C57 32 58 35 58 38M42 48C44 50 47 51 50 51C53 51 56 50 58 48" 
+                              stroke="white" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+                        <!-- Smartphone outline -->
+                        <rect x="60" y="50" width="20" height="30" rx="2" 
+                              stroke="white" stroke-width="2" fill="none" opacity="0.7"/>
+                        <line x1="65" y1="75" x2="75" y2="75" 
+                              stroke="white" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+                        <!-- Connection lines -->
+                        <path d="M52 45L60 55M52 50L60 60M52 55L60 65" 
+                              stroke="white" stroke-width="1" stroke-dasharray="2 2" opacity="0.4"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Status Badge -->
+            <div class="status-badge">⚡ Concept Phase • In Development</div>
+
+            <!-- Main Heading -->
+            <h1>Coming Soon</h1>
+            <p class="subtitle">APO Mind Control – Your Brain, Your Commands</p>
+
+            <!-- Project Information -->
+            <div class="project-info">
+                <h2>Project Vision</h2>
+                <p>
+                    Imagine controlling your smartphone and computer <span class="highlight">with just your thoughts</span>. 
+                    APO Mind Control is a groundbreaking concept application that will bridge Brain-Computer Interface (BCI) 
+                    technology with your everyday digital life.
+                </p>
+                <p>
+                    Using EEG devices like the Muse headband, this application aims to enable you to <span class="highlight">automate 
+                    tasks across your existing applications</span> – from sending messages and controlling media playback to 
+                    launching apps and managing notifications – all through mind control patterns.
+                </p>
+
+                <!-- Features Grid -->
+                <div class="features-list">
+                    <div class="feature-item">
+                        <div class="feature-icon">🧠</div>
+                        <h3>Neural Commands</h3>
+                        <p>Train custom thought patterns to trigger actions</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">📱</div>
+                        <h3>App Integration</h3>
+                        <p>Works with your favorite apps seamlessly</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">⚙️</div>
+                        <h3>Task Automation</h3>
+                        <p>Create workflows controlled by your mind</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">🔒</div>
+                        <h3>Privacy First</h3>
+                        <p>Your brain data stays on your device</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Disclaimer -->
+            <div class="disclaimer">
+                <span class="disclaimer-icon">⚠️</span>
+                <p>
+                    <strong>Important Notice:</strong> This application is currently in the ideation and concept development phase. 
+                    It does not exist yet as a functional product. We are actively researching and developing the technology 
+                    required to make this vision a reality.
+                </p>
+            </div>
+
+            <!-- Call to Action -->
+            <div class="cta-section">
+                <div class="cta-buttons">
+                    <a href="mailto:l.salomon@etudiant.edcparis.edu?subject=APO Mind Control - Early Access Interest" class="cta-button cta-primary">
+                        Notify Me When Ready
+                    </a>
+                    <a href="index.html" class="cta-button cta-secondary">
+                        Explore Current Projects
+                    </a>
+                </div>
+            </div>
+
+            <!-- Timeline -->
+            <div class="timeline">
+                <p>Expected prototype development: 2026</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
