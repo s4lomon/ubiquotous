@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Muse EEG</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+/* ── Lock to viewport, zero scroll ──────────────────────────────── */
+html,body{
+  width:100%;height:100%;overflow:hidden;
+  background:#161820;
+  color:#c8cdd8;
+  font-family:'Space Mono',monospace;
+}
+
+:root{
+  --bg:#161820;
+  --card:rgba(255,255,255,.04);
+  --card-b:rgba(255,255,255,.08);
+  --muted:#4a5068;
+  --text:#c8cdd8;
+  --hi:#e8ecf4;
+  --gap:6px;
+  --pad:8px;
+  --r:8px;
+}
+
+/* ── Root layout: header strip + body ───────────────────────────── */
+#root{
+  display:flex;flex-direction:column;
+  width:100vw;height:100vh;
+  padding:var(--gap);
+  gap:var(--gap);
+}
+
+/* ── Header strip — single compact line ─────────────────────────── */
+#hdr{
+  flex:0 0 auto;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:5px 10px;
+  background:var(--card);
+  border:1px solid var(--card-b);
+  border-radius:var(--r);
+}
+#hdr h1{font-size:clamp(.7rem,1.4vw,.95rem);font-weight:700;color:var(--hi);letter-spacing:-.02em;white-space:nowrap;}
+#hdr .sep{color:var(--muted);margin:0 2px;}
+#statusText{font-size:.6rem;color:var(--muted);}
+#streamBadge{font-size:.55rem;padding:1px 6px;border-radius:999px;letter-spacing:.5px;text-transform:uppercase;font-family:'Space Mono',monospace;}
+.badge-sim {background:rgba(108,122,224,.12);color:#a5b4fc;border:1px solid rgba(108,122,224,.3);}
+.badge-real{background:rgba(74,222,128,.1);color:#86efac;border:1px solid rgba(74,222,128,.25);}
+.badge-off {background:rgba(255,255,255,.03);color:var(--muted);border:1px solid rgba(255,255,255,.08);}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.dot-sm{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.pulse{animation:blink 2.5s infinite;}
+#hdr-btns{display:flex;gap:5px;margin-left:auto;flex-wrap:nowrap;}
+
+/* ── Buttons ─────────────────────────────────────────────────────── */
+.btn{
+  padding:3px 10px;font-size:.6rem;font-weight:600;
+  color:var(--text);border:1px solid var(--card-b);cursor:pointer;
+  border-radius:5px;transition:all .15s;
+  display:inline-flex;align-items:center;gap:.3em;white-space:nowrap;
+  background:rgba(255,255,255,.04);font-family:'Space Mono',monospace;
+}
+.btn:hover:not(:disabled){background:rgba(255,255,255,.09);color:var(--hi);}
+.btn:disabled{opacity:.25;cursor:not-allowed;}
+.btn-connect{border-color:rgba(74,222,128,.2);color:#86efac;}
+.btn-connect:hover:not(:disabled){background:rgba(74,222,128,.07);}
+.btn-disconnect{border-color:rgba(248,113,113,.2);color:#fca5a5;}
+.btn-disconnect:hover:not(:disabled){background:rgba(248,113,113,.07);}
+.btn-sim{border-color:rgba(108,122,224,.25);color:#a5b4fc;}
+.btn-sim:hover:not(:disabled){background:rgba(108,122,224,.09);}
+.btn-sim.active{background:rgba(108,122,224,.15)!important;border-color:rgba(108,122,224,.5)!important;color:#c7d2fe!important;}
+
+/* ── Event strip — single slim bar when active ───────────────────── */
+#simEventPanel{display:none;flex:0 0 auto;}
+#simEventPanel.visible{display:block;}
+#evt-strip{
+  display:flex;align-items:stretch;gap:var(--gap);
+  padding:5px 8px;
+  background:var(--card);
+  border:1px solid rgba(108,122,224,.15);
+  border-radius:var(--r);
+}
+#evt-strip .elabel{
+  font-size:.55rem;color:#a5b4fc;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  display:flex;align-items:center;white-space:nowrap;padding-right:8px;
+  border-right:1px solid var(--card-b);margin-right:4px;
+}
+#evt-btns{display:flex;gap:5px;flex:1;flex-wrap:wrap;}
+.evt-btn{
+  flex:1;min-width:0;
+  cursor:pointer;user-select:none;position:relative;overflow:hidden;
+  border-radius:5px;padding:3px 6px;
+  border:1px solid rgba(255,255,255,.07);
+  background:rgba(255,255,255,.03);
+  transition:all .15s;
+  display:flex;flex-direction:column;align-items:flex-start;gap:0;
+}
+.evt-btn:hover{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.14);}
+.evt-btn:active{transform:scale(.96);}
+.evt-btn.firing::after{content:'';position:absolute;inset:0;background:rgba(255,255,255,.12);animation:flash .3s ease-out forwards;}
+@keyframes flash{to{opacity:0;}}
+.evt-name{font-size:.58rem;font-weight:700;color:var(--hi);white-space:nowrap;}
+.evt-desc{font-size:.5rem;color:var(--muted);white-space:nowrap;}
+.dur-bar{height:2px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;margin-top:2px;width:100%;}
+.dur-fill{height:100%;border-radius:2px;width:0;}
+#evtLog{display:flex;align-items:center;gap:5px;margin-left:auto;font-size:.5rem;white-space:nowrap;color:var(--muted);}
+
+/* ── Main body: two columns ──────────────────────────────────────── */
+#body{
+  flex:1 1 0;min-height:0;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:var(--gap);
+}
+
+/* ── Column ──────────────────────────────────────────────────────── */
+.col{display:flex;flex-direction:column;gap:var(--gap);min-height:0;}
+
+/* ── Cards ───────────────────────────────────────────────────────── */
+.card{
+  background:var(--card);border:1px solid var(--card-b);
+  border-radius:var(--r);padding:var(--pad);
+  display:flex;flex-direction:column;min-height:0;overflow:hidden;
+}
+.card-h{
+  font-size:.6rem;font-weight:600;color:var(--hi);
+  margin-bottom:4px;flex:0 0 auto;white-space:nowrap;
+  display:flex;align-items:center;gap:.35em;
+}
+
+/* ── Sphere card — takes remaining space in left col ─────────────── */
+#sphere-card{flex:1 1 0;min-height:0;}
+#sphereCanvas{width:100%!important;height:100%!important;display:block;border-radius:5px;}
+
+/* ── Map card — fixed aspect ─────────────────────────────────────── */
+#map-card{flex:0 0 auto;}
+.map-wrap{position:relative;}
+#mapCanvas{width:100%!important;height:auto!important;display:block;border-radius:4px;border:1px solid rgba(255,255,255,.07);}
+#cursorDot{
+  position:absolute;pointer-events:none;
+  width:12px;height:12px;border-radius:50%;
+  border:1.5px solid rgba(255,255,255,.85);
+  box-shadow:0 0 6px rgba(0,0,0,.6);
+  transform:translate(-50%,-50%);
+  transition:left .35s cubic-bezier(.25,.46,.45,.94),top .35s cubic-bezier(.25,.46,.45,.94);
+}
+.map-labels{display:flex;justify-content:space-between;margin-top:2px;font-size:.5rem;color:var(--muted);}
+
+/* ── Color state row ─────────────────────────────────────────────── */
+#state-row{
+  flex:0 0 auto;
+  display:flex;align-items:center;gap:8px;
+  padding:4px 6px;background:rgba(0,0,0,.2);border-radius:5px;
+}
+#colorBox{width:26px;height:26px;border-radius:4px;border:1px solid rgba(255,255,255,.1);flex-shrink:0;transition:background .5s ease;}
+.state-vals{font-size:.55rem;color:var(--text);line-height:1.5;}
+.state-pos{font-size:.5rem;color:var(--muted);margin-left:auto;text-align:right;line-height:1.6;}
+
+/* ── Right col: voltage + waves + sensors + conn ─────────────────── */
+#volt-card{flex:0 0 auto;}
+.volt-row{display:flex;align-items:center;gap:8px;}
+.volt-box{
+  width:40px;height:40px;flex-shrink:0;
+  border-radius:5px;border:1px solid var(--card-b);
+  display:flex;align-items:center;justify-content:center;
+  transition:background .8s ease;
+}
+.volt-val{font-size:.75rem;font-weight:700;color:var(--hi);}
+.volt-bar-wrap{flex:1;min-width:0;}
+.volt-bar{height:10px;background:linear-gradient(to right,#111,#374151,#d1d5db);border-radius:3px;position:relative;overflow:hidden;}
+#voltageProgress{position:absolute;height:100%;background:rgba(108,122,224,.3);transition:width 1s ease;width:0%;border-radius:3px;}
+.volt-labels{display:flex;justify-content:space-between;margin-top:2px;font-size:.5rem;color:var(--muted);}
+
+#waves-card{flex:1 1 0;min-height:0;overflow:hidden;}
+#waveStreams{display:flex;flex-direction:column;gap:3px;height:100%;min-height:0;}
+
+#sensor-card{flex:0 0 auto;}
+.sensor-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+.sensor-item{display:flex;align-items:center;gap:4px;}
+
+#conn-card{flex:0 0 auto;}
+.conn-row{display:flex;justify-content:space-between;font-size:.55rem;margin-bottom:2px;}
+.conn-row span:first-child{color:var(--muted);}
+.conn-row span:last-child{color:var(--hi);}
+
+canvas{display:block;}
+</style>
+</head>
+<body>
+<div id="root">
+
+  <!-- ── Header ───────────────────────────────────────────────────── -->
+  <div id="hdr">
+    <svg style="width:14px;height:14px;color:#7c85c8;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+    </svg>
+    <h1>Muse EEG</h1>
+    <span class="sep">—</span>
+    <span id="statusText">Ready</span>
+    <span id="streamBadge" class="badge-off">offline</span>
+    <div id="connectionIndicator" class="dot pulse" style="background:#4a5068;"></div>
+    <div id="hdr-btns">
+      <button id="connectBtn" class="btn btn-connect" onclick="connectMuse()">🔗 Connect</button>
+      <button id="disconnectBtn" class="btn btn-disconnect" onclick="disconnectMuse()" disabled>✕ Disc</button>
+      <button id="simBtn" class="btn btn-sim" onclick="toggleSim()">
+        <span id="simBtnIcon">⚡</span><span id="simBtnLabel">Sim</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Event strip ──────────────────────────────────────────────── -->
+  <div id="simEventPanel">
+    <div id="evt-strip">
+      <div class="elabel">⚡ Events</div>
+      <div id="evt-btns">
+        <div class="evt-btn" onclick="fireEvent('ARM_RIGHT',1500,this)">
+          <span class="evt-name">🦾 Arm R</span>
+          <span class="evt-desc">ERD · gamma · EMG</span>
+          <div class="dur-bar"><div class="dur-fill" style="background:#86efac;"></div></div>
+        </div>
+        <div class="evt-btn" onclick="fireEvent('ARM_LEFT',1500,this)">
+          <span class="evt-name">🦿 Arm L</span>
+          <span class="evt-desc">ERD · gamma · EMG</span>
+          <div class="dur-bar"><div class="dur-fill" style="background:#86efac;"></div></div>
+        </div>
+        <div class="evt-btn" onclick="fireEvent('BLINK_RIGHT',300,this)">
+          <span class="evt-name">👁 Blink R</span>
+          <span class="evt-desc">EOG frontal R</span>
+          <div class="dur-bar"><div class="dur-fill" style="background:#fde68a;"></div></div>
+        </div>
+        <div class="evt-btn" onclick="fireEvent('BLINK_LEFT',300,this)">
+          <span class="evt-name">👁 Blink L</span>
+          <span class="evt-desc">EOG frontal L</span>
+          <div class="dur-bar"><div class="dur-fill" style="background:#fde68a;"></div></div>
+        </div>
+        <div class="evt-btn" onclick="fireEvent('STARTLE',800,this)">
+          <span class="evt-name">⚡ Startle</span>
+          <span class="evt-desc">N100 · P300 · burst</span>
+          <div class="dur-bar"><div class="dur-fill" style="background:#fca5a5;"></div></div>
+        </div>
+      </div>
+      <div id="evtLog"><span style="color:#4a5068;font-size:.5rem;">no events</span></div>
+    </div>
+  </div>
+
+  <!-- ── Main body ────────────────────────────────────────────────── -->
+  <div id="body">
+
+    <!-- LEFT col -->
+    <div class="col">
+      <!-- Sphere -->
+      <div class="card" id="sphere-card">
+        <div class="card-h">Brain State Sphere</div>
+        <canvas id="sphereCanvas" width="600" height="600"></canvas>
+      </div>
+
+      <!-- Map -->
+      <div class="card" id="map-card">
+        <div class="card-h">2D Color Map</div>
+        <div class="map-wrap">
+          <canvas id="mapCanvas" width="500" height="220"></canvas>
+          <div id="cursorDot"></div>
+        </div>
+        <div class="map-labels"><span>Delta</span><span>Theta</span><span>Alpha</span><span>Beta</span><span>Gamma</span></div>
+      </div>
+    </div>
+
+    <!-- RIGHT col -->
+    <div class="col">
+      <!-- State + Voltage side by side on top -->
+      <div style="display:flex;gap:var(--gap);flex:0 0 auto;align-items:stretch;">
+        <div class="card" style="flex:0 0 auto;display:flex;align-items:center;">
+          <div style="display:flex;align-items:center;gap:7px;">
+            <div id="colorBox" style="width:26px;height:26px;border-radius:4px;border:1px solid rgba(255,255,255,.1);flex-shrink:0;transition:background .5s ease;"></div>
+            <div style="font-size:.52rem;color:var(--text);line-height:1.6;">R <span id="colorR">0</span><br>G <span id="colorG">0</span><br>B <span id="colorB">0</span></div>
+            <div style="font-size:.5rem;color:var(--muted);text-align:right;line-height:1.6;">F <span id="freqPos">0.0</span>%<br>V <span id="voltPos">0.0</span>%</div>
+          </div>
+        </div>
+        <div class="card" id="volt-card" style="flex:1 1 0;">
+          <div class="card-h">Voltage</div>
+          <div class="volt-row">
+            <div id="voltageBox" class="volt-box"><span id="voltageValue" class="volt-val">0.00</span></div>
+            <div class="volt-bar-wrap">
+              <div class="volt-bar"><div id="voltageProgress"></div></div>
+              <div class="volt-labels"><span>0 (silent)</span><span>0.5 (active)</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Waves -->
+      <div class="card" id="waves-card">
+        <div class="card-h">Live Brainwave Streams</div>
+        <div id="waveStreams"></div>
+      </div>
+      <!-- Sensors + Connection side by side on bottom -->
+      <div style="display:flex;gap:var(--gap);flex:0 0 auto;align-items:stretch;">
+        <div class="card" id="sensor-card" style="flex:1 1 0;">
+          <div class="card-h">Sensors</div>
+          <div class="sensor-grid">
+            <div class="sensor-item"><div id="tp9-status"  class="dot-sm" style="background:#374151;"></div><span style="font-size:.58rem;color:var(--hi);font-weight:600;">TP9</span> <span style="font-size:.5rem;color:var(--muted);">L-Ear</span> <span style="font-size:.5rem;color:var(--muted);margin-left:auto;" id="tp9-count">0</span></div>
+            <div class="sensor-item"><div id="af7-status"  class="dot-sm" style="background:#374151;"></div><span style="font-size:.58rem;color:var(--hi);font-weight:600;">AF7</span>  <span style="font-size:.5rem;color:var(--muted);">L-Front</span><span style="font-size:.5rem;color:var(--muted);margin-left:auto;" id="af7-count">0</span></div>
+            <div class="sensor-item"><div id="af8-status"  class="dot-sm" style="background:#374151;"></div><span style="font-size:.58rem;color:var(--hi);font-weight:600;">AF8</span>  <span style="font-size:.5rem;color:var(--muted);">R-Front</span><span style="font-size:.5rem;color:var(--muted);margin-left:auto;" id="af8-count">0</span></div>
+            <div class="sensor-item"><div id="tp10-status" class="dot-sm" style="background:#374151;"></div><span style="font-size:.58rem;color:var(--hi);font-weight:600;">TP10</span> <span style="font-size:.5rem;color:var(--muted);">R-Ear</span> <span style="font-size:.5rem;color:var(--muted);margin-left:auto;" id="tp10-count">0</span></div>
+          </div>
+        </div>
+        <div class="card" id="conn-card" style="flex:1 1 0;">
+          <div class="card-h">Connection</div>
+          <div class="conn-row"><span>Device</span><span id="deviceName" style="max-width:55%;text-align:right;word-break:break-word;">Not connected</span></div>
+          <div class="conn-row"><span>Packets</span><span id="packetCount">0</span></div>
+          <div class="conn-row"><span>Channels</span><span id="channelCount">0</span></div>
+          <div class="conn-row"><span>Source</span><span id="dataSource">—</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+
+const MUSE_SERVICE='0000fe8d-0000-1000-8000-00805f9b34fb';
+const CONTROL_CHAR='273e0001-4c4d-454d-96be-f03bac821358';
+const EEG_CHARS={TP9:'273e0003-4c4d-454d-96be-f03bac821358',AF7:'273e0004-4c4d-454d-96be-f03bac821358',AF8:'273e0005-4c4d-454d-96be-f03bac821358',TP10:'273e0006-4c4d-454d-96be-f03bac821358'};
+
+let device=null,server=null,connected=false,simMode=false,simInterval=null;
+let packetCount=0,channelCount=0;
+const eegBuffers={TP9:[],AF7:[],AF8:[],TP10:[]};
+const sensorPackets={TP9:0,AF7:0,AF8:0,TP10:0};
+const sensorLastUpdate={TP9:0,AF7:0,AF8:0,TP10:0};
+const FFT_SIZE=256,SAMPLE_RATE=256;
+
+// ── Smoothed display values (exponential moving average) ─────────────
+let brainwaves={delta:0,theta:0,alpha:0,beta:0,gamma:0};
+let smoothBW={delta:0,theta:0,alpha:0,beta:0,gamma:0};  // what we display
+let totalVoltage=0,smoothVoltage=0;
+const SMOOTH=0.06;  // 0=no change, 1=instant — lower = smoother
+
+let rotation=0;
+const waveformBuffers={delta:[],theta:[],alpha:[],beta:[],gamma:[]};
+const WAVEFORM_LENGTH=200;
+
+// Richer, more saturated colors for expressiveness
+const waveColors={
+  delta:{r:120,g:50,b:200},   // violet
+  theta:{r:40,g:90,b:220},    // blue
+  alpha:{r:30,g:180,b:100},   // green
+  beta: {r:220,g:110,b:20},   // orange
+  gamma:{r:210,g:40, b:80}    // crimson
+};
+
+// ── Smooth cursor state ───────────────────────────────────────────────
+let cursorX=0.5,cursorY=0.5;  // 0-1 normalized, smoothed separately
+
+// ── Sim engine ────────────────────────────────────────────────────────
+const SIM_SR=16384;
+let simT=0,activeEvent=null;
+const EVT_DUR={ARM_RIGHT:Math.floor(1.5*16384),ARM_LEFT:Math.floor(1.5*16384),BLINK_RIGHT:Math.floor(.3*16384),BLINK_LEFT:Math.floor(.3*16384),STARTLE:Math.floor(.8*16384)};
+const pinkBufs={OCC:{rows:[0,0,0,0,0],sum:0,ctr:0},FRONT:{rows:[0,0,0,0,0],sum:0,ctr:0},CENT:{rows:[0,0,0,0,0],sum:0,ctr:0},PAR:{rows:[0,0,0,0,0],sum:0,ctr:0}};
+function pinkNext(st,amp){const lb=st.ctr&-st.ctr||1;st.ctr++;for(let i=0;i<5;i++)if(lb&(1<<i)){st.sum-=st.rows[i];st.rows[i]=(Math.random()*2-1);st.sum+=st.rows[i];}return(st.sum/5)*amp;}
+
+function simCh(region,t,et,ep){
+  const pk=pinkBufs[region];
+  let s=pinkNext(pk,4e-6)+(Math.random()*2-1)*200e-9;
+  if(region==='OCC') s+=30e-6*Math.sin(2*Math.PI*10*t+.3)+10e-6*Math.sin(2*Math.PI*9.5*t+1.1)+5e-6*Math.sin(2*Math.PI*11*t+.7);
+  else if(region==='FRONT'){s+=12e-6*Math.sin(2*Math.PI*20*t+.5)+8e-6*Math.sin(2*Math.PI*18*t+1.3);const bp=(t*.2)%1;if(bp<.1)s+=60e-6*Math.sin(Math.PI*bp/.1);}
+  else if(region==='CENT') s+=15e-6*Math.sin(2*Math.PI*6*t+.9)+10e-6*Math.sin(2*Math.PI*11*t+2);
+  else if(region==='PAR')  s+=8e-6*Math.sin(2*Math.PI*10*t+.2);
+  s+=50e-9*Math.sin(2*Math.PI*50*t);
+  const ep2=t%1;if(ep2<.01)s+=1.5e-6*Math.exp(-ep2/.003);
+  if(et){const p=ep;
+    if((et==='ARM_RIGHT'&&region==='CENT')||(et==='ARM_LEFT'&&region==='PAR'))
+      s+=-20e-6*Math.sin(2*Math.PI*10*p*2)+8e-6*Math.sin(2*Math.PI*40*p*.5+1)+(Math.random()*2-1)*6e-6;
+    else if((et==='BLINK_RIGHT'||et==='BLINK_LEFT')&&region==='FRONT') s+=250e-6*Math.sin(Math.PI*p);
+    else if(et==='STARTLE'){
+      s+=(Math.random()*2-1)*15e-6;
+      if(p<.15&&region==='FRONT') s-=40e-6*Math.sin(Math.PI*p/.15);
+      if(p>.25&&p<.55&&(region==='PAR'||region==='CENT')) s+=60e-6*Math.sin(Math.PI*(p-.25)/.30);
+      if(p>.5) s+=20e-6*Math.sin(Math.PI*(p-.5)/.5);
+    }
+  }
+  return s;
+}
+
+// ── Resonator bank — replaces FFT, correctly identifies per-region bands ──
+// 2nd-order IIR bandpass. Envelope follower tracks instantaneous band power
+// without the flat-spectrum problem of FFT on short pink-noise-dominated signals.
+function makeRes(fc,Q){
+  const w0=2*Math.PI*fc/SIM_SR,alpha=Math.sin(w0)/(2*Q);
+  return{b0:alpha,b2:-alpha,a0:1+alpha,a1:-2*Math.cos(w0),a2:1-alpha,x1:0,x2:0,y1:0,y2:0,env:0};
+}
+function resTick(r,x){
+  const y=(r.b0*x+r.b2*r.x2-r.a1*r.y1-r.a2*r.y2)/r.a0;
+  r.x2=r.x1;r.x1=x;r.y2=r.y1;r.y1=y;
+  r.env=0.998*r.env+0.002*Math.abs(y);
+}
+// Separate resonator bank per region so each region's dominant rhythm shows through
+const resBank={
+  OCC:  {delta:makeRes(2,2),theta:makeRes(6,3),alpha:makeRes(10,4),beta:makeRes(20,4),gamma:makeRes(50,5)},
+  FRONT:{delta:makeRes(2,2),theta:makeRes(6,3),alpha:makeRes(10,4),beta:makeRes(20,4),gamma:makeRes(50,5)},
+  CENT: {delta:makeRes(2,2),theta:makeRes(6,3),alpha:makeRes(10,4),beta:makeRes(20,4),gamma:makeRes(50,5)},
+  PAR:  {delta:makeRes(2,2),theta:makeRes(6,3),alpha:makeRes(10,4),beta:makeRes(20,4),gamma:makeRes(50,5)},
+};
+
+function simFrame(){
+  const n=Math.floor(SIM_SR/50),dt=1/SIM_SR;
+  const et=activeEvent?activeEvent.type:null;
+  const ep=activeEvent?(1-activeEvent.rem/activeEvent.total):0;
+  if(activeEvent&&activeEvent.rem>0){activeEvent.rem-=n;if(activeEvent.rem<=0)activeEvent=null;}
+
+  let voltAcc=0;
+  for(let i=0;i<n;i++){
+    simT+=dt;
+    for(const reg of ['OCC','FRONT','CENT','PAR']){
+      const s=simCh(reg,simT,et,ep);
+      for(const band in resBank[reg]) resTick(resBank[reg][band],s);
+      voltAcc+=s*s;
+    }
+  }
+
+  // Aggregate: each region weighted by its anatomical band relevance
+  // OCC dominates alpha, FRONT beta, CENT theta — this gives distinct hues
+  const raw={delta:0,theta:0,alpha:0,beta:0,gamma:0};
+  for(const reg of ['OCC','FRONT','CENT','PAR']){
+    for(const band in resBank[reg])
+      raw[band]+=resBank[reg][band].env;
+  }
+
+  // Event-driven band boosts — make each event visually distinct
+  if(et){
+    const p=ep;
+    if(et==='ARM_RIGHT'||et==='ARM_LEFT'){
+      raw.gamma*=(1+4*Math.sin(Math.PI*p));      // strong gamma burst → crimson
+      raw.alpha*=Math.max(0.15,1-2*p);           // alpha ERD → suppress green
+      raw.beta *=(1+2*Math.sin(Math.PI*p));
+    }
+    if(et==='BLINK_RIGHT'||et==='BLINK_LEFT'){
+      raw.delta*=(1+6*Math.sin(Math.PI*p));      // blinks = big slow wave → violet
+      raw.theta*=(1+3*Math.sin(Math.PI*p));
+    }
+    if(et==='STARTLE'){
+      raw.beta *=(1+4*Math.sin(Math.PI*Math.min(p/.15,1)));  // N100 → orange
+      raw.gamma*=(1+5*p*(1-p)*4);                             // broadband → crimson
+      if(p>0.25&&p<0.55) raw.theta*=(1+6*Math.sin(Math.PI*(p-.25)/.3)); // P300 → blue
+      raw.alpha*=Math.max(0.1,1-3*p*(1-p)*4);    // global suppression
+    }
+  }
+
+  const tot=Object.values(raw).reduce((a,b)=>a+b,0)||1;
+  brainwaves={delta:raw.delta/tot,theta:raw.theta/tot,alpha:raw.alpha/tot,beta:raw.beta/tot,gamma:raw.gamma/tot};
+  totalVoltage=Math.min(5,Math.sqrt(voltAcc/(n*4))*2e4);
+
+  Object.keys(brainwaves).forEach(b=>{
+    waveformBuffers[b].push(brainwaves[b]);
+    if(waveformBuffers[b].length>WAVEFORM_LENGTH)waveformBuffers[b].shift();
+  });
+  packetCount++;
+  document.getElementById('packetCount').textContent=packetCount;
+  ['TP9','AF7','AF8','TP10'].forEach(ch=>{sensorPackets[ch]++;sensorLastUpdate[ch]=Date.now();document.getElementById(ch.toLowerCase()+'-count').textContent=sensorPackets[ch];});
+  updateUI();
+}
+
+// ── Smoothing ─────────────────────────────────────────────────────────
+function smooth(from,to,factor){return from+(to-from)*factor;}
+function applySmoothing(){
+  Object.keys(brainwaves).forEach(b=>{smoothBW[b]=smooth(smoothBW[b],brainwaves[b],SMOOTH);});
+  smoothVoltage=smooth(smoothVoltage,totalVoltage,SMOOTH);
+}
+
+function toggleSim(){if(simMode)stopSim();else{if(connected){updateStatus('⚠️ Disconnect Muse first');return;}startSim();}}
+function startSim(){
+  simMode=true;simT=0;packetCount=0;Object.keys(sensorPackets).forEach(k=>sensorPackets[k]=0);
+  document.getElementById('simBtn').classList.add('active');
+  document.getElementById('simBtnIcon').textContent='◼';document.getElementById('simBtnLabel').textContent='Stop Sim';
+  document.getElementById('connectionIndicator').style.background='#7c85c8';
+  document.getElementById('deviceName').textContent='BioSemi ActiveThree (simulated)';
+  document.getElementById('channelCount').textContent='128';document.getElementById('dataSource').textContent='128-ch · 24-bit · 16384 Hz';
+  document.getElementById('connectBtn').disabled=true;
+  const b=document.getElementById('streamBadge');b.className='badge badge-sim';b.textContent='sim stream';
+  document.getElementById('simEventPanel').classList.add('visible');
+  updateStatus('ActiveThree sim running');
+  ['TP9','AF7','AF8','TP10'].forEach(ch=>sensorLastUpdate[ch]=Date.now());
+  simInterval=setInterval(simFrame,20);
+}
+function stopSim(){
+  simMode=false;clearInterval(simInterval);simInterval=null;activeEvent=null;
+  document.getElementById('simBtn').classList.remove('active');
+  document.getElementById('simBtnIcon').textContent='⚡';document.getElementById('simBtnLabel').textContent='ActiveThree Sim';
+  document.getElementById('connectionIndicator').style.background='#6b7280';
+  document.getElementById('deviceName').textContent='Not connected';document.getElementById('channelCount').textContent='0';document.getElementById('dataSource').textContent='—';
+  document.getElementById('connectBtn').disabled=false;
+  const b=document.getElementById('streamBadge');b.className='badge badge-off';b.textContent='offline';
+  document.getElementById('simEventPanel').classList.remove('visible');
+  updateStatus('Ready to connect');
+  brainwaves={delta:0,theta:0,alpha:0,beta:0,gamma:0};smoothBW={delta:0,theta:0,alpha:0,beta:0,gamma:0};totalVoltage=0;smoothVoltage=0;mapRendered=false;updateUI();
+}
+function fireEvent(type,durMs,el){
+  if(!simMode)return;
+  const total=EVT_DUR[type]||Math.floor(durMs/1000*SIM_SR);
+  activeEvent={type,rem:total,total};
+  el.classList.add('firing');setTimeout(()=>el.classList.remove('firing'),300);
+  const fill=el.querySelector('.dur-fill');
+  if(fill){fill.style.transition='none';fill.style.width='0%';requestAnimationFrame(()=>{fill.style.transition='width '+durMs+'ms linear';fill.style.width='100%';setTimeout(()=>{fill.style.transition='width .5s ease';fill.style.width='0%';},durMs);});}
+  const labels={ARM_RIGHT:'🦾 Arm R',ARM_LEFT:'🦿 Arm L',BLINK_RIGHT:'👁 Blink R',BLINK_LEFT:'👁 Blink L',STARTLE:'⚡ Startle'};
+  const ts=new Date().toTimeString().slice(0,8);
+  document.getElementById('evtLog').innerHTML='<span class="xs-txt" style="font-family:\'Space Mono\',monospace;color:var(--muted);">'+ts+'</span><span class="xs-txt" style="font-family:\'Space Mono\',monospace;color:var(--text);font-weight:700;"> '+labels[type]+'</span><span class="xs-txt" style="color:var(--muted);"> '+durMs+'ms</span>';
+}
+
+// ── Muse ─────────────────────────────────────────────────────────────
+async function connectMuse(){
+  if(simMode){updateStatus('⚠️ Stop sim first');return;}
+  try{
+    updateStatus('Searching for Muse...');
+    device=await navigator.bluetooth.requestDevice({filters:[{services:[MUSE_SERVICE]}],optionalServices:[MUSE_SERVICE]});
+    document.getElementById('deviceName').textContent=device.name||'Muse Device';
+    device.addEventListener('gattserverdisconnected',onDisconnected);
+    updateStatus('Connecting...');server=await device.gatt.connect();
+    const service=await server.getPrimaryService(MUSE_SERVICE);
+    try{const ctrl=await service.getCharacteristic(CONTROL_CHAR);await ctrl.writeValue(new Uint8Array([0x02,0x64,0x0a]));await new Promise(r=>setTimeout(r,100));await ctrl.writeValue(new Uint8Array([0x02,0x73,0x0a]));}catch(e){}
+    channelCount=0;
+    for(const[name,uuid]of Object.entries(EEG_CHARS)){try{const ch=await service.getCharacteristic(uuid);await ch.startNotifications();ch.addEventListener('characteristicvaluechanged',e=>handleEEG(e,name));channelCount++;}catch(e){}}
+    document.getElementById('channelCount').textContent=channelCount;
+    if(channelCount>0){
+      connected=true;document.getElementById('dataSource').textContent='Muse · 4ch · 256 Hz';
+      updateStatus('Streaming live EEG');
+      document.getElementById('connectionIndicator').style.background='#86efac';
+      document.getElementById('connectBtn').disabled=true;document.getElementById('disconnectBtn').disabled=false;
+      const b=document.getElementById('streamBadge');b.className='badge badge-real';b.textContent='live muse';
+    }else throw new Error('No channels available');
+  }catch(err){updateStatus('Error: '+err.message);}
+}
+function handleEEG(event,channel){
+  const value=event.target.value;packetCount++;sensorPackets[channel]++;sensorLastUpdate[channel]=Date.now();
+  document.getElementById('packetCount').textContent=packetCount;
+  document.getElementById(channel.toLowerCase()+'-count').textContent=sensorPackets[channel];
+  document.getElementById(channel.toLowerCase()+'-status').style.background='#86efac';
+  const samples=[];
+  for(let i=0;i<value.byteLength-1;i+=3){if(i+2<value.byteLength){const s1=(value.getUint8(i)<<4)|(value.getUint8(i+1)>>4),s2=((value.getUint8(i+1)&0x0F)<<8)|value.getUint8(i+2);samples.push(s1,s2);}}
+  samples.forEach(s=>eegBuffers[channel].push((s-2048)*.48828125));
+  if(eegBuffers[channel].length>FFT_SIZE*2)eegBuffers[channel]=eegBuffers[channel].slice(-FFT_SIZE);
+  if(channel==='AF7'&&eegBuffers[channel].length>=FFT_SIZE)processBrainwaves();
+}
+setInterval(()=>{
+  const now=Date.now();
+  ['TP9','AF7','AF8','TP10'].forEach(ch=>{
+    const dt=now-sensorLastUpdate[ch],el=document.getElementById(ch.toLowerCase()+'-status');
+    if(dt>2000)el.style.background='#f87171';
+    else if(dt>500)el.style.background='#fbbf24';
+    else if(connected||simMode)el.style.background='#86efac';
+  });
+},600);
+function processBrainwaves(){
+  const channels=Object.values(eegBuffers).filter(b=>b.length>=FFT_SIZE);if(!channels.length)return;
+  const avg=new Array(FFT_SIZE).fill(0);channels.forEach(b=>{for(let i=0;i<FFT_SIZE;i++)avg[i]+=b[b.length-FFT_SIZE+i];});avg.forEach((_,i)=>avg[i]/=channels.length);
+  const mean=avg.reduce((a,b)=>a+b,0)/avg.length,dem=avg.map(v=>v-mean);
+  const filt=bpf(dem,.5,100,SAMPLE_RATE),notch=nf(filt,60,SAMPLE_RATE),fft=pFFT(notch);
+  const d=bp(fft,.5,4),th=bp(fft,4,8),al=bp(fft,8,13),be=bp(fft,13,30),ga=bp(fft,30,100);
+  const tot=d+th+al+be+ga;
+  if(tot>0){brainwaves={delta:d/tot,theta:th/tot,alpha:al/tot,beta:be/tot,gamma:ga/tot};Object.keys(brainwaves).forEach(b=>{waveformBuffers[b].push(brainwaves[b]);if(waveformBuffers[b].length>WAVEFORM_LENGTH)waveformBuffers[b].shift();});}
+  totalVoltage=Math.min(5,Math.sqrt(notch.reduce((s,v)=>s+v*v,0)/notch.length)/50);
+  updateUI();
+}
+function bpf(d,lf,hf,sr){let f=d.slice();const ah=1/(1+(sr/(2*Math.PI*lf)));let pv=0;for(let i=1;i<f.length;i++){f[i]=ah*(pv+f[i]-f[i-1]);pv=f[i];}const al=(2*Math.PI*hf)/(sr+2*Math.PI*hf);let pl=f[0];for(let i=1;i<f.length;i++){f[i]=pl+al*(f[i]-pl);pl=f[i];}return f;}
+function nf(d,nf2,sr){const f=d.slice(),Q=30,w0=2*Math.PI*nf2/sr,bw=w0/Q,b=[1,-2*Math.cos(w0),1],a=[1,-2*Math.cos(w0)*Math.exp(-bw/2),Math.exp(-bw)];for(let i=2;i<f.length;i++)f[i]=(b[0]*d[i]+b[1]*d[i-1]+b[2]*d[i-2]-a[1]*f[i-1]-a[2]*f[i-2])/a[0];return f;}
+function pFFT(buf){const N=buf.length,R=new Array(N/2).fill(0);for(let k=0;k<N/2;k++){let re=0,im=0;for(let n=0;n<N;n++){const a=-2*Math.PI*k*n/N;re+=buf[n]*Math.cos(a);im+=buf[n]*Math.sin(a);}R[k]=Math.sqrt(re*re+im*im)/N;}return R;}
+function bp(fft,lo,hi){const bin=SAMPLE_RATE/FFT_SIZE,mn=Math.floor(lo/bin),mx=Math.ceil(hi/bin);let p=0;for(let i=mn;i<=mx&&i<fft.length;i++)p+=fft[i]*fft[i];return p||.0001;}
+
+// ── Color calc (uses smoothed values) ────────────────────────────────
+function calcColor(w,v){
+  const names=['delta','theta','alpha','beta','gamma'];
+  const pw=names.map(x=>w[x]);
+  const tp=pw.reduce((a,b)=>a+b,0)||1;
+
+  // ── Hue blend ────────────────────────────────────────────────
+  let r=0,g=0,b=0;
+  pw.forEach((p,i)=>{const c=waveColors[names[i]],wt=p/tp;r+=c.r*wt;g+=c.g*wt;b+=c.b*wt;});
+
+  // ── X position: dominant band → map position ─────────────────
+  // The map has a grey neutral center (X=0.5). Bands are arranged:
+  // delta(0.0) theta(0.2) neutral(0.5) alpha(0.6) beta(0.8) gamma(1.0)
+  // Dominant band drives X so purple sphere → cursor left (delta zone).
+  const mapPos={delta:0.0,theta:0.2,alpha:0.6,beta:0.8,gamma:1.0};
+  // Soft dominant: weight^3 so winner pulls cursor clearly
+  const pw3={};let tot3=0;
+  names.forEach(n=>{pw3[n]=(pw[names.indexOf(n)]/tp)**3;tot3+=pw3[n];});
+  const bestX=names.reduce((acc,n)=>acc+mapPos[n]*(pw3[n]/tot3),0);
+
+  // ── Voltage → Y ──────────────────────────────────────────────
+  const MIN_BRIGHT=0.45,VOLT_NORM=0.5,MID=0.65;
+  const rawY=Math.min(1,v/VOLT_NORM);
+  const y=MIN_BRIGHT+(1-MIN_BRIGHT)*Math.sqrt(rawY);
+
+  // ── Brightness ramp ──────────────────────────────────────────
+  let fr,fg,fb;
+  if(y<MID){const t=(y-MIN_BRIGHT)/(MID-MIN_BRIGHT);fr=r*.3+r*.7*t;fg=g*.3+g*.7*t;fb=b*.3+b*.7*t;}
+  else{const t=(y-MID)/(1-MID);fr=r+(255-r)*t*.6;fg=g+(255-g)*t*.6;fb=b+(255-b)*t*.6;}
+
+  return{pos:{x:bestX,rawY},col:{r:Math.round(fr),g:Math.round(fg),b:Math.round(fb)}};
+}
+
+function updateUI(){
+  applySmoothing();
+  const res=calcColor(smoothBW,smoothVoltage);
+
+  // Color box — CSS transition handles the smooth fade
+  document.getElementById('colorBox').style.background='rgb('+res.col.r+','+res.col.g+','+res.col.b+')';
+  document.getElementById('colorR').textContent=res.col.r;
+  document.getElementById('colorG').textContent=res.col.g;
+  document.getElementById('colorB').textContent=res.col.b;
+  document.getElementById('freqPos').textContent=(res.pos.x*100).toFixed(1);
+  document.getElementById('voltPos').textContent=(Math.min(1,res.pos.rawY)*100).toFixed(1);
+
+  // Voltage — display smoothed value, CSS transition on progress bar
+  const inten=Math.round((smoothVoltage/0.5)*255);
+  document.getElementById('voltageBox').style.background='rgb('+inten+','+inten+','+inten+')';
+  document.getElementById('voltageValue').textContent=smoothVoltage.toFixed(2);
+  document.getElementById('voltageValue').style.color=inten>128?'#111':'var(--text-hi)';
+  document.getElementById('voltageProgress').style.width=(Math.min(1,smoothVoltage/0.5)*100)+'%';
+
+  // Smooth cursor toward actual position
+  cursorX=smooth(cursorX, res.pos.x,    .08);
+  cursorY=smooth(cursorY, res.pos.rawY, .08);
+
+  updateWaveBands();
+  drawColorMap(res);
+}
+
+function updateWaveBands(){
+  const c=document.getElementById('waveStreams');c.innerHTML='';
+  Object.entries(smoothBW).forEach(([wave,power])=>{
+    const col=waveColors[wave],freq=wave==='delta'?'0.5-4Hz':wave==='theta'?'4-8Hz':wave==='alpha'?'8-13Hz':wave==='beta'?'13-30Hz':'30-100Hz';
+    const d=document.createElement('div');d.style.cssText='display:flex;flex-direction:column;gap:.15rem;';
+    d.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;">'
+      +'<div style="display:flex;align-items:center;gap:.28rem;">'
+      +'<div style="width:.55rem;height:.55rem;border-radius:50%;background:rgb('+col.r+','+col.g+','+col.b+');flex-shrink:0;"></div>'
+      +'<span class="sm-txt" style="color:var(--text-hi);font-weight:600;text-transform:capitalize;">'+wave+'</span>'
+      +'<span class="xs-txt">'+freq+'</span></div>'
+      +'<span class="xs-txt" style="color:var(--text-hi);font-family:\'Space Mono\',monospace;">'+(power*100).toFixed(1)+'%</span>'
+      +'</div>'
+      +'<canvas id="wave-'+wave+'" width="400" height="28" style="background:rgba(0,0,0,.25);border-radius:.35rem;"></canvas>';
+    c.appendChild(d);
+    drawWaveform(wave,col);
+  });
+}
+
+function drawWaveform(band,color){
+  const cv=document.getElementById('wave-'+band);if(!cv)return;
+  const ctx=cv.getContext('2d'),w=cv.width,h=cv.height,data=waveformBuffers[band];
+  ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(0,0,w,h);
+  if(data.length<2)return;
+  // Subtle grid
+  ctx.strokeStyle='rgba(255,255,255,.04)';ctx.lineWidth=1;
+  for(let i=0;i<5;i++){const y=(i/4)*h;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+  // Line
+  ctx.strokeStyle='rgb('+color.r+','+color.g+','+color.b+')';ctx.lineWidth=1.5;ctx.beginPath();
+  for(let i=0;i<data.length;i++){const x=(i/WAVEFORM_LENGTH)*w,y=h-(data[i]*h);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}
+  ctx.stroke();
+  // Fill
+  ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.closePath();
+  ctx.fillStyle='rgba('+color.r+','+color.g+','+color.b+',.08)';ctx.fill();
+  // Dot at tip
+  if(data.length>0){
+    const lv=data[data.length-1],ly=h-(lv*h);
+    ctx.fillStyle='rgb('+color.r+','+color.g+','+color.b+')';
+    ctx.shadowColor='rgb('+color.r+','+color.g+','+color.b+')';ctx.shadowBlur=6;
+    ctx.beginPath();ctx.arc(w-3,ly,2.5,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+  }
+}
+
+// ── Color map — cursor via CSS transition (smooth) ────────────────────
+let mapRendered=false;
+function drawColorMap(result){
+  const cv=document.getElementById('mapCanvas'),ctx=cv.getContext('2d'),w=cv.width,h=cv.height;
+
+  // ── Draw gradient — uses EXACT same color formula as calcColor ────
+  // So the cursor always sits on the pixel that matches the sphere color.
+  // X axis: band-frequency position (0=delta, 1=gamma)
+  // Y axis: rawY voltage (0=bottom/black, 1=top/white) — same rawY as calcColor
+  if(!mapRendered){
+    const MIN_BRIGHT=0.45;
+    const MID=0.65;
+    const VOLT_NORM=0.5;
+    // Map X axis: delta(0.0)→theta(0.2)→grey(0.5)→alpha(0.6)→beta(0.8)→gamma(1.0)
+    // Matches the dominant-band X positions in calcColor
+    const mapStops=[
+      {x:0.0,  r:120,g:50, b:200},  // delta  violet
+      {x:0.2,  r:40, g:90, b:220},  // theta  blue
+      {x:0.5,  r:110,g:100,b:115},  // neutral grey
+      {x:0.6,  r:30, g:180,b:100},  // alpha  green
+      {x:0.8,  r:220,g:110,b:20 },  // beta   orange
+      {x:1.0,  r:210,g:40, b:80 },  // gamma  crimson
+    ];
+    for(let x=0;x<w;x+=2){
+      const xp=x/w;
+      let br=0,bg=0,bb=0;
+      for(let i=0;i<mapStops.length-1;i++){
+        if(xp>=mapStops[i].x&&xp<=mapStops[i+1].x){
+          const t=(xp-mapStops[i].x)/(mapStops[i+1].x-mapStops[i].x);
+          br=mapStops[i].r+(mapStops[i+1].r-mapStops[i].r)*t;
+          bg=mapStops[i].g+(mapStops[i+1].g-mapStops[i].g)*t;
+          bb=mapStops[i].b+(mapStops[i+1].b-mapStops[i].b)*t;
+          break;
+        }
+      }
+      for(let y=0;y<h;y+=2){
+        // rawY: bottom=0, top=1
+        const rawY=(h-y)/h;
+        // apply same brightness curve as calcColor
+        const yy=MIN_BRIGHT+(1-MIN_BRIGHT)*Math.sqrt(rawY);
+        let fr,fg,fb;
+        if(yy<MID){const t=(yy-MIN_BRIGHT)/(MID-MIN_BRIGHT);fr=br*.3+br*.7*t;fg=bg*.3+bg*.7*t;fb=bb*.3+bb*.7*t;}
+        else{const t=(yy-MID)/(1-MID);fr=br+(255-br)*t*.6;fg=bg+(255-bg)*t*.6;fb=bb+(255-bb)*t*.6;}
+        ctx.fillStyle='rgb('+Math.round(fr)+','+Math.round(fg)+','+Math.round(fb)+')';
+        ctx.fillRect(x,y,2,2);
+      }
+    }
+    mapRendered=true;
+  }
+
+  // ── Cursor: use canvas-internal coordinates, not CSS display size ──
+  // cursorX/Y are smoothed copies of res.pos.x and res.pos.rawY
+  const dot=document.getElementById('cursorDot');
+  // Convert canvas px → CSS px via the actual scale ratio
+  const scaleX=cv.getBoundingClientRect().width/w;
+  const scaleH=cv.getBoundingClientRect().height/h;
+  const cx=cursorX*w*scaleX;
+  const cy=(1-cursorY)*h*scaleH;   // rawY=0 → bottom, rawY=1 → top
+  dot.style.left=cx+'px';
+  dot.style.top=cy+'px';
+}
+
+// ── Sphere ────────────────────────────────────────────────────────────
+function resizeSphere(){
+  const cv=document.getElementById('sphereCanvas');
+  const r=cv.parentElement.getBoundingClientRect();
+  // subtract card-h height (~20px) and state row (~40px)
+  const sz=Math.min(r.width, r.height);
+  if(cv.width!==Math.round(r.width)||cv.height!==Math.round(r.height)){
+    cv.width=Math.round(r.width); cv.height=Math.round(r.height);
+  }
+}
+function drawSphere(){
+  resizeSphere();
+  const cv=document.getElementById('sphereCanvas'),ctx=cv.getContext('2d');
+  const w=cv.width,h=cv.height,cx=w/2,cy=h/2,R=Math.min(w,h)*0.42;
+  // Dark spatial background
+  ctx.fillStyle='#141519';ctx.fillRect(0,0,w,h);
+  // Subtle radial vignette
+  const vg=ctx.createRadialGradient(cx,cy,R*.3,cx,cy,R*1.3);
+  vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(10,11,16,.6)');
+
+  const res=calcColor(smoothBW,smoothVoltage),c=res.col;
+  // Sphere gets extra saturation boost — always vivid
+  // Guarantee a minimum color floor on the sphere itself
+  const minC=60;
+  const bR=Math.min(255,Math.max(minC,c.r)*1.4);
+  const bG=Math.min(255,Math.max(minC,c.g)*1.4);
+  const bB=Math.min(255,Math.max(minC,c.b)*1.4);
+
+  const g1=ctx.createRadialGradient(cx-55,cy-55,8,cx,cy,R);
+  g1.addColorStop(0,'rgb('+Math.min(255,bR+90)+','+Math.min(255,bG+90)+','+Math.min(255,bB+90)+')');
+  g1.addColorStop(.35,'rgb('+bR+','+bG+','+bB+')');
+  g1.addColorStop(.75,'rgb('+Math.max(0,bR-50)+','+Math.max(0,bG-50)+','+Math.max(0,bB-50)+')');
+  g1.addColorStop(1,'rgb('+Math.max(0,bR-90)+','+Math.max(0,bG-90)+','+Math.max(0,bB-90)+')');
+
+  ctx.shadowColor='rgba('+bR+','+bG+','+bB+',.5)';ctx.shadowBlur=35;
+  ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fillStyle=g1;ctx.fill();ctx.shadowBlur=0;
+
+  // Specular highlight
+  const g2=ctx.createRadialGradient(cx-30,cy-35,0,cx,cy,R*.55);
+  g2.addColorStop(0,'rgba(255,255,255,.22)');g2.addColorStop(1,'rgba('+bR+','+bG+','+bB+',0)');
+  ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fillStyle=g2;ctx.fill();
+
+  // Vignette overlay
+  ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fillStyle=vg;ctx.fill();
+
+  // Wireframe — very subtle
+  ctx.strokeStyle='rgba(255,255,255,.06)';ctx.lineWidth=1;
+  for(let i=-3;i<=3;i++){const y=cy+(i*R/4),r=Math.sqrt(R*R-(i*R/4)**2);if(r>0){ctx.beginPath();ctx.ellipse(cx,y,r,r*.25,0,0,Math.PI*2);ctx.stroke();}}
+  for(let i=0;i<6;i++){const angle=(i/6)*Math.PI+rotation,rx=R*Math.abs(Math.cos(angle));ctx.beginPath();ctx.ellipse(cx,cy,rx,R,Math.PI/2,0,Math.PI*2);ctx.stroke();}
+
+  rotation+=.006;
+  requestAnimationFrame(drawSphere);
+}
+
+async function disconnectMuse(){if(device&&device.gatt.connected)await device.gatt.disconnect();if(simMode)stopSim();}
+function onDisconnected(){
+  connected=false;updateStatus('Disconnected');
+  document.getElementById('connectionIndicator').style.background='#6b7280';
+  document.getElementById('connectBtn').disabled=false;document.getElementById('disconnectBtn').disabled=true;
+  document.getElementById('deviceName').textContent='Not connected';document.getElementById('dataSource').textContent='—';
+  const b=document.getElementById('streamBadge');b.className='badge badge-off';b.textContent='offline';
+}
+function updateStatus(msg){document.getElementById('statusText').textContent=msg;}
+if(!navigator.bluetooth){updateStatus('Web Bluetooth not supported — use Chrome/Edge.');document.getElementById('connectBtn').disabled=true;}
+drawSphere();
+
+</script>
+</body>
+</html>
