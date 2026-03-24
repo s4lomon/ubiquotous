@@ -4,6 +4,8 @@ APO Technology is a Brain-Computer Interface (BCI) startup focused on making EEG
 
 Current Projects
 
-🎨 Real-Time Color Map — Visual representation of brain states via EEG sphere
-🦆 Duck Catch — Hand tracking game using MediaPipe (motor control demo)
-🔌 BESA Bridge — C++ LSL-to-WebSocket bridge for research-grade EEG simulation
+>Real-Time Color Map — Visual representation of brain states via EEG sphere 
+
+>BESA Bridge — C++ LSL-to-WebSocket bridge for research-grade EEG simulation
+
+>Dice Game — Gesture + mental command controlled dice roller, bridging motor and neural input
